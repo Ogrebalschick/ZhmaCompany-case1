@@ -1,0 +1,30 @@
+.rail {
+  min-height: 0;
+  overflow: auto;
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+}
+
+.inner {
+  padding: 18px 16px 28px;
+}
+
+.inner h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+.status,
+.empty {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .rail {
+    order: -1;
+    max-height: none;
+    border-left: 0;
+    border-bottom: 1px solid var(--line);
+  }
+}

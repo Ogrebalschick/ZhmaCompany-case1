@@ -1,0 +1,11 @@
+.bar {
+  width: min(760px, 100%);
+  margin: 0 auto;
+  padding: 8px 24px 0;
+}
+
+.bar p {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+}

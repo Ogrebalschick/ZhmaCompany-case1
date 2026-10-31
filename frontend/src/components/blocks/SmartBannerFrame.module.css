@@ -1,0 +1,48 @@
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 148px;
+  padding: 20px 22px;
+  border-radius: 18px;
+  background: linear-gradient(100deg, #16324f 0%, #1f6f8b 100%);
+  color: #fff;
+}
+
+.copy {
+  min-width: 0;
+}
+
+.copy h3,
+.copy p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.copy h3 {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.copy p {
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.cta {
+  flex: none;
+  border-radius: 999px;
+  background: #fff;
+  color: #16324f;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

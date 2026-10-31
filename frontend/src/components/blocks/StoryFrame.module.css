@@ -1,0 +1,45 @@
+.phone {
+  width: 220px;
+  height: 392px;
+  padding: 12px;
+  border-radius: 32px;
+  background: #1a2332;
+  box-shadow: 0 16px 40px rgba(26, 35, 50, 0.16);
+}
+
+.plate {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 28px 16px 16px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #0e6b57 0%, #14956f 58%, #0b3d4a 100%);
+  color: #fff;
+}
+
+.plate h3,
+.plate p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.plate h3 {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.plate p {
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.cta {
+  margin-top: auto;
+  align-self: flex-start;
+  border-radius: 999px;
+  background: #fff;
+  color: #0e6b57;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 700;
+}

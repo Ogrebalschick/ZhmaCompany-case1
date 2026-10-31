@@ -5,13 +5,13 @@ object Prompts {
     fun intent(today: String, catalog: String, draftJson: String): String = """
 Ты — разбор намерения пользователя для кампании.
 
-Сегодня: $today
+Сегодня: 
 
 Текущий черновик:
-$draftJson
+
 
 Каталог:
-$catalog
+
 
 Верни ТОЛЬКО JSON без пояснений, в строгой схеме:
 {"intent":"CAMPAIGN_EDIT|CONFIRM|CANCEL|GENERATE_CREATIVE|LIST_CAMPAIGNS|OTHER","patch":{"name":null,"marketingName":null,"topic":null,"tagIds":null,"keywords":null,"audienceType":null,"includedSegments":null,"excludedSegments":null,"segmentQuery":null,"placeIds":null,"placeQuery":null,"tagQuery":null,"startDate":null,"startTime":null,"endDate":null,"endTime":null,"weight":null,"initialCtr":null,"creativeBrief":null},"confirm":null}
@@ -27,8 +27,8 @@ $catalog
     fun askMissing(missing: String, options: String): String = """
 Спроси пользователя про недостающие поля кампании.
 
-Недостающие поля: $missing
-${if (options.isNotBlank()) "Варианты: $options" else ""}
+Недостающие поля: 
+
 
 Правила:
 - 1–2 деловых предложения на русском.
@@ -40,12 +40,12 @@ ${if (options.isNotBlank()) "Варианты: $options" else ""}
     fun bannerCopy(product: String, audience: String, placement: String, n: Int): String = """
 Сгенерируй рекламный копирайт.
 
-Продукт: $product
-Аудитория: $audience
-Место размещения: $placement
-Количество вариантов: $n
+Продукт: 
+Аудитория: 
+Место размещения: 
+Количество вариантов: 
 
-Верни ТОЛЬКО JSON-массив из $n объектов со схемой:
+Верни ТОЛЬКО JSON-массив из  объектов со схемой:
 [{"headline":"...","body":"...","cta":"...","image_prompt_en":"..."}]
 
 Лимиты:

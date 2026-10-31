@@ -1,0 +1,22 @@
+.empty {
+  width: min(640px, 100%);
+  margin: 12px auto 0;
+  padding: 4px 8px 8px;
+}
+
+.empty h2 {
+  margin: 0 0 8px;
+  font-size: 26px;
+  line-height: 1.2;
+}
+
+.empty p {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+
+.empty button {
+  text-align: left;
+  border-radius: 16px;
+  line-height: 1.4;
+}

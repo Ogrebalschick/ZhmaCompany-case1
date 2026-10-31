@@ -1,0 +1,23 @@
+.wrap p {
+  margin: 0 0 6px;
+  color: var(--warning-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.wrap ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wrap li {
+  border-radius: 999px;
+  background: var(--warning-bg);
+  color: var(--warning-ink);
+  padding: 4px 10px;
+  font-size: 13px;
+}

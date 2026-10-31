@@ -41,3 +41,7 @@ desktop.ini
 # Env / secrets
 .env
 *.env.local
+
+# Frontend
+frontend/node_modules/
+frontend/dist/

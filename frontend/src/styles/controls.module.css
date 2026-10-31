@@ -1,0 +1,29 @@
+.primary,
+.quiet {
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-weight: 600;
+}
+
+.primary {
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+}
+
+.primary:disabled,
+.quiet:disabled {
+  opacity: 0.55;
+}
+
+.quiet {
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.quiet:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}

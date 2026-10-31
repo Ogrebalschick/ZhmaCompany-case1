@@ -1,0 +1,14 @@
+.row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.bubble {
+  max-width: min(560px, 100%);
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 16px 16px 4px 16px;
+  background: var(--user);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

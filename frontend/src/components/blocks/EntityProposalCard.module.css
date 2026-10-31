@@ -1,0 +1,30 @@
+.card h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.card dl {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.card dl div {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.card dt {
+  color: var(--muted);
+}
+
+.card dd {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

@@ -1,4 +1,4 @@
-package ru.zhma.campaign.ai.llm
+﻿package ru.zhma.campaign.ai.llm
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
@@ -23,7 +23,8 @@ class StructuredLlm(private val llm: LlmClient) {
             val currentUser = if (lastError == null) {
                 user
             } else {
-                "$user\nПредыдущий ответ невалиден: $lastError Верни только валидный JSON по схеме."
+                "
+Предыдущий ответ невалиден:  Верни только валидный JSON по схеме."
             }
 
             try {
@@ -39,18 +40,18 @@ class StructuredLlm(private val llm: LlmClient) {
                 lastError = e.message ?: "parse error"
             }
         }
-        throw IllegalStateException("StructuredLlm failed after $retries attempts. Last error: $lastError")
+        throw IllegalStateException("StructuredLlm failed after  attempts. Last error: ")
     }
 
     private fun stripFence(raw: String): String {
         var s = raw.trim()
-        if (s.startsWith("```json")) {
-            s = s.substringAfter("```json").trim()
-        } else if (s.startsWith("```")) {
-            s = s.substringAfter("```").trim()
+        if (s.startsWith("`json")) {
+            s = s.substringAfter("`json").trim()
+        } else if (s.startsWith("`")) {
+            s = s.substringAfter("`").trim()
         }
-        if (s.endsWith("```")) {
-            s = s.substringBeforeLast("```").trim()
+        if (s.endsWith("`")) {
+            s = s.substringBeforeLast("`").trim()
         }
         return s
     }
