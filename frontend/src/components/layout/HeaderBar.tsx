@@ -9,6 +9,7 @@ export function HeaderBar({
   booting,
   mock,
   campaignsOpen,
+  title,
   onToggleCampaigns,
   onRoleChange,
 }: {
@@ -18,6 +19,7 @@ export function HeaderBar({
   booting: boolean;
   mock: boolean;
   campaignsOpen: boolean;
+  title: string;
   onToggleCampaigns: () => void;
   onRoleChange: (role: Role) => void;
 }) {
@@ -42,7 +44,7 @@ export function HeaderBar({
           </span>
         </button>
         <div>
-          <p className={styles.product}>Сборка кампании</p>
+          <p className={styles.product}>{title}</p>
           <p className={styles.session} data-testid="session-id">
             {sessionLabel}
           </p>

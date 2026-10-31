@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createChatClient, usesMock } from "./api/createClient";
+import { CURRENT_DRAFT_ID, SCREEN_TITLE } from "./chat/campaignList";
 import { CONFIRM_TEXT } from "./chat/phrases";
 import { useChat } from "./chat/useChat";
 import { Composer } from "./components/composer/Composer";
@@ -18,6 +19,11 @@ export function App() {
   const [railWidth, setRailWidth] = useState(460);
   const [reveal, setReveal] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const title = chat.draftBlock?.draft.name?.trim() || SCREEN_TITLE;
+
+  useEffect(() => {
+    document.title = title;
+  }, [title]);
 
   useEffect(() => {
     const query = window.matchMedia("(min-width: 761px)");
@@ -37,6 +43,7 @@ export function App() {
             booting={chat.booting}
             mock={usesMock()}
             campaignsOpen={reveal > 0}
+            title={title}
             onToggleCampaigns={() => setReveal((value) => (value > 0 ? 0 : CAMPAIGN_DRAWER_WIDTH))}
             onRoleChange={chat.setRole}
           />
@@ -76,7 +83,8 @@ export function App() {
         }}
         onSelect={(id) => {
           setReveal(0);
-          chat.openCampaign(id);
+          if (id === CURRENT_DRAFT_ID) chat.closeCampaign();
+          else chat.openCampaign(id);
         }}
       />
     </>

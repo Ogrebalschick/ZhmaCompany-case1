@@ -2,7 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChatClient } from "../api/client";
 import { errorText } from "../api/errors";
 import { normalizeReply } from "../api/guards";
-import type { CampaignListItem, ChatMessage, IncomingBlock, JobView, Role } from "../api/types";
+import type {
+  CampaignListItem,
+  ChatMessage,
+  DraftCampaign,
+  IncomingBlock,
+  JobView,
+  Role,
+} from "../api/types";
+import { draftFromBlocks, withCurrentDraft } from "./campaignList";
 import { USER_LOGIN } from "./phrases";
 import { latestDraftBlock, latestQuickReplies } from "./selectors";
 
@@ -30,8 +38,21 @@ export function useChat(client: ChatClient) {
   const request = useRef(0);
   const sending = useRef(false);
   const viewing = useRef(false);
+  const workingDraft = useRef<DraftCampaign | null>(null);
 
   const context = useCallback(() => ({ user: USER_LOGIN, role: roleRef.current }), []);
+
+  const publishList = useCallback(
+    async (draft: DraftCampaign | null) => {
+      try {
+        const list = await client.listCampaigns(context());
+        setCampaigns(withCurrentDraft(list, draft));
+      } catch {
+        setCampaigns(withCurrentDraft([], draft));
+      }
+    },
+    [client, context],
+  );
 
   useEffect(() => {
     roleRef.current = role;
@@ -48,12 +69,8 @@ export function useChat(client: ChatClient) {
         const history = await client.getMessages(context(), created.sessionId);
         if (cancelled) return;
         setMessages(history);
-        try {
-          const list = await client.listCampaigns(context());
-          if (!cancelled) setCampaigns(list);
-        } catch {
-          if (!cancelled) setCampaigns([]);
-        }
+        workingDraft.current = latestDraftBlock(history)?.draft ?? null;
+        if (!cancelled) await publishList(workingDraft.current);
       } catch (error) {
         if (cancelled) return;
         setMessages([{ role: "assistant", text: errorText(error) }]);
@@ -65,7 +82,7 @@ export function useChat(client: ChatClient) {
       cancelled = true;
       request.current += 1;
     };
-  }, [client, context]);
+  }, [client, context, publishList]);
 
   const append = useCallback((message: ChatMessage) => {
     if (viewing.current) {
@@ -119,7 +136,10 @@ export function useChat(client: ChatClient) {
             pushAssistant("Сервер завершил задачу без ответа.");
             return;
           }
+          const fromReply = draftFromBlocks(reply.blocks);
+          if (!viewing.current && fromReply) workingDraft.current = fromReply;
           pushAssistant(reply.text, reply.blocks);
+          if (request.current === requestId) await publishList(workingDraft.current);
         } catch (error) {
           if (error instanceof Cancelled || request.current !== requestId) return;
           pushAssistant(errorText(error));
@@ -132,7 +152,7 @@ export function useChat(client: ChatClient) {
       })();
       return true;
     },
-    [append, client, context, pushAssistant, waitForJob],
+    [append, client, context, publishList, pushAssistant, waitForJob],
   );
 
   const stopRequest = useCallback(() => {
