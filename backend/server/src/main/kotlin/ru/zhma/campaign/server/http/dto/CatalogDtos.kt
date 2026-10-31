@@ -14,4 +14,8 @@ data class BannerTypeDto(
 )
 
 @Serializable
-data class ChannelDto(val id: Long, val code: String, val description: String)
+data class ChannelDto(
+    val id: Long,
+    val code: String,
+    val description: String,
+)

@@ -11,7 +11,10 @@ private val linkActions = setOf("externalLink", "openSmartLink")
 private val noLinkActions = setOf("closeCampaign", "doneCampaign")
 private val actionTypes = setOf("default", "externalLink", "openSmartLink", "closeCampaign", "doneCampaign")
 
-fun checkCampaign(input: CheckInput, catalog: LiveCatalog): CheckResult {
+fun checkCampaign(
+    input: CheckInput,
+    catalog: LiveCatalog,
+): CheckResult {
     val errors = mutableListOf<ApiError>()
     val missing = mutableListOf<ApiError>()
     val name = input.name?.trim().orEmpty()
@@ -57,7 +60,9 @@ fun checkCampaign(input: CheckInput, catalog: LiveCatalog): CheckResult {
     if (!input.endTime.isNullOrBlank() && input.endDate.isNullOrBlank()) {
         errors += ApiError("endDate", "Укажите дату окончания", "endDate")
     }
-    if (startDate != null && endDate != null && timePattern.matches(input.startTime ?: "") &&
+    if (startDate != null &&
+        endDate != null &&
+        timePattern.matches(input.startTime ?: "") &&
         (input.endTime.isNullOrBlank() || timePattern.matches(input.endTime))
     ) {
         val start = startDate.atTime(LocalTime.parse(input.startTime))
@@ -83,14 +88,23 @@ fun checkCampaign(input: CheckInput, catalog: LiveCatalog): CheckResult {
     } else if (audience != "ALL_USERS" && audience != "SEGMENTED") {
         errors += ApiError("audienceType", "Тип аудитории должен быть ALL_USERS или SEGMENTED", "audienceType")
     }
-    val included = input.included.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
-    val excluded = input.excluded.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+    val included =
+        input.included
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+    val excluded =
+        input.excluded
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
     if (audience == "ALL_USERS" && (included.isNotEmpty() || excluded.isNotEmpty())) {
-        errors += ApiError(
-            "SEGMENTS_FORBIDDEN_FOR_ALL_USERS",
-            "Для аудитории «все пользователи» сегменты не задаются",
-            "segments",
-        )
+        errors +=
+            ApiError(
+                "SEGMENTS_FORBIDDEN_FOR_ALL_USERS",
+                "Для аудитории «все пользователи» сегменты не задаются",
+                "segments",
+            )
     }
     (included + excluded).distinct().forEach { code ->
         val state = catalog.segmentStates[code]
@@ -171,10 +185,11 @@ fun warningLines(
     creativeBannerTypes: List<String>,
 ): List<String> {
     val warnings = mutableListOf<String>()
-    val uncovered = places.any { place ->
-        val expected = place.defaultBanner ?: return@any false
-        creativeBannerTypes.none { it == expected }
-    }
+    val uncovered =
+        places.any { place ->
+            val expected = place.defaultBanner ?: return@any false
+            creativeBannerTypes.none { it == expected }
+        }
     if (uncovered) warnings += "Не для всех мест показа настроены креативы"
     if (places.any { it.state != "ACTIVE" }) warnings += "Некоторые места показа деактивированы"
     if (tagIds.isEmpty()) warnings += "У кампании отсутствуют теги"

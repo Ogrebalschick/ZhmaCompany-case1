@@ -36,16 +36,17 @@ object DatabaseFactory {
         close()
         File(path).parentFile?.mkdirs()
         val sqlitePath = path.replace('\\', '/')
-        val db = Database.connect(
-            url = "jdbc:sqlite:$sqlitePath",
-            driver = "org.sqlite.JDBC",
-            setupConnection = { connection ->
-                connection.createStatement().use { statement ->
-                    statement.execute("PRAGMA foreign_keys = ON")
-                    statement.execute("PRAGMA busy_timeout = 5000")
-                }
-            },
-        )
+        val db =
+            Database.connect(
+                url = "jdbc:sqlite:$sqlitePath",
+                driver = "org.sqlite.JDBC",
+                setupConnection = { connection ->
+                    connection.createStatement().use { statement ->
+                        statement.execute("PRAGMA foreign_keys = ON")
+                        statement.execute("PRAGMA busy_timeout = 5000")
+                    }
+                },
+            )
         database = db
         transaction(db) {
             SchemaUtils.create(
@@ -84,9 +85,10 @@ object DatabaseFactory {
         }
     }
 
-    suspend fun <T> db(block: () -> T): T = mutex.withLock {
-        withContext(Dispatchers.IO) {
-            transaction(database ?: error("База не открыта")) { block() }
+    suspend fun <T> db(block: () -> T): T =
+        mutex.withLock {
+            withContext(Dispatchers.IO) {
+                transaction(database ?: error("База не открыта")) { block() }
+            }
         }
-    }
 }

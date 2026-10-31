@@ -1,6 +1,18 @@
 package ru.zhma.campaign.ai.model
 
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 @Serializable
 data class DraftCampaign(
@@ -50,6 +62,7 @@ data class DraftPatch(
     val marketingName: String? = null,
     val topic: String? = null,
     val tagIds: List<Long>? = null,
+    @Serializable(with = LenientStringSerializer::class)
     val keywords: String? = null,
     val audienceType: String? = null,
     val includedSegments: List<String>? = null,
@@ -66,6 +79,32 @@ data class DraftPatch(
     val initialCtr: Double? = null,
     val creativeBrief: String? = null,
 )
+
+@OptIn(ExperimentalSerializationApi::class)
+internal object LenientStringSerializer : KSerializer<String?> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("LenientString", PrimitiveKind.STRING)
+
+    override fun serialize(
+        encoder: Encoder,
+        value: String?,
+    ) {
+        if (value == null) encoder.encodeNull() else encoder.encodeString(value)
+    }
+
+    override fun deserialize(decoder: Decoder): String? {
+        val element = (decoder as JsonDecoder).decodeJsonElement()
+        return when (element) {
+            is JsonNull -> null
+            is JsonPrimitive -> element.contentOrNull?.takeIf { it.isNotBlank() }
+            is JsonArray ->
+                element
+                    .mapNotNull { item -> (item as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() } }
+                    .joinToString(", ")
+                    .ifBlank { null }
+            else -> null
+        }
+    }
+}
 
 @Serializable
 data class ParsedIntent(

@@ -87,7 +87,7 @@ class OpenAiCompatibleClient(
     }
 
     companion object {
-        private const val TIMEOUT_MS = 20_000
+        private const val TIMEOUT_MS = 45_000
 
         private fun env(name: String): String? = System.getenv(name)?.takeIf { it.isNotBlank() }
     }

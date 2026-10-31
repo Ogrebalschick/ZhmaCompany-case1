@@ -3,7 +3,9 @@ package ru.zhma.campaign.server.http.dto
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class BannerButtonJson(val name: String)
+data class BannerButtonJson(
+    val name: String,
+)
 
 @Serializable
 data class BannerContentJson(

@@ -5,13 +5,19 @@ import kotlinx.serialization.json.JsonElement
 import ru.zhma.campaign.ai.model.AssistantReply
 
 @Serializable
-data class SessionResponse(val sessionId: String)
+data class SessionResponse(
+    val sessionId: String,
+)
 
 @Serializable
-data class PostMessageBody(val text: String = "")
+data class PostMessageBody(
+    val text: String = "",
+)
 
 @Serializable
-data class JobAccepted(val jobId: String)
+data class JobAccepted(
+    val jobId: String,
+)
 
 @Serializable
 data class JobStatusResponse(
@@ -29,4 +35,6 @@ data class MessageDto(
 )
 
 @Serializable
-data class MessagesResponse(val messages: List<MessageDto>)
+data class MessagesResponse(
+    val messages: List<MessageDto>,
+)

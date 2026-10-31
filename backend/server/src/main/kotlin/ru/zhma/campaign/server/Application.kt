@@ -54,7 +54,8 @@ fun Application.module(dbPath: String = System.getProperty("campaign.db") ?: "da
             call.respond(cause.status, ErrorResponse(cause.errors))
         }
         exception<Throwable> { call, cause ->
-            call.application.environment.log.error("request failed", cause)
+            call.application.environment.log
+                .error("request failed", cause)
             if (!call.response.isSent) {
                 call.respond(
                     HttpStatusCode.InternalServerError,

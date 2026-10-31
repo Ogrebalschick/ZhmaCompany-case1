@@ -3,13 +3,11 @@ package ru.zhma.campaign.server.service
 import io.ktor.http.HttpStatusCode
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
@@ -47,6 +45,7 @@ import ru.zhma.campaign.server.db.table.TopicsTable
 import ru.zhma.campaign.server.http.ApiError
 import ru.zhma.campaign.server.http.ApiException
 import ru.zhma.campaign.server.http.Caller
+import ru.zhma.campaign.server.http.bad
 import ru.zhma.campaign.server.http.dto.AuditEntryDto
 import ru.zhma.campaign.server.http.dto.BannerButtonJson
 import ru.zhma.campaign.server.http.dto.BannerContentJson
@@ -60,7 +59,6 @@ import ru.zhma.campaign.server.http.dto.CreativeDto
 import ru.zhma.campaign.server.http.dto.MessageDto
 import ru.zhma.campaign.server.http.dto.SegmentsDto
 import ru.zhma.campaign.server.http.dto.WarningsResponse
-import ru.zhma.campaign.server.http.bad
 import ru.zhma.campaign.server.http.notFound
 import ru.zhma.campaign.server.http.roleForbidden
 import ru.zhma.campaign.server.json.AppJson
@@ -74,24 +72,47 @@ private val linkActions = setOf("externalLink", "openSmartLink")
 
 fun auditNow(): String = LocalDateTime.now(ZoneOffset.UTC).format(auditTime)
 
-fun loadSnapshot(): CatalogSnapshot = CatalogSnapshot(
-    topics = TopicsTable.selectAll().orderBy(TopicsTable.value).map {
-        TopicRef(it[TopicsTable.value], it[TopicsTable.label])
-    },
-    tags = TagsTable.selectAll().orderBy(TagsTable.id).map { TagRef(it[TagsTable.id], it[TagsTable.name]) },
-    segments = SegmentsTable.selectAll().orderBy(SegmentsTable.code).map {
-        SegmentRef(it[SegmentsTable.code], it[SegmentsTable.name], it[SegmentsTable.type], it[SegmentsTable.state], it[SegmentsTable.count])
-    },
-    places = PlacesTable.selectAll().orderBy(PlacesTable.id).map {
-        PlaceRef(it[PlacesTable.id], it[PlacesTable.code], it[PlacesTable.description], it[PlacesTable.defaultBanner], it[PlacesTable.state])
-    },
-    bannerTypes = BannerTypesTable.selectAll().orderBy(BannerTypesTable.id).map {
-        BannerTypeRef(it[BannerTypesTable.code], it[BannerTypesTable.titleMax], it[BannerTypesTable.textMax], splitChannels(it[BannerTypesTable.channels]))
-    },
-    channels = ChannelsTable.selectAll().orderBy(ChannelsTable.id).map {
-        ChannelRef(it[ChannelsTable.code], it[ChannelsTable.description])
-    },
-)
+fun loadSnapshot(): CatalogSnapshot =
+    CatalogSnapshot(
+        topics =
+            TopicsTable.selectAll().orderBy(TopicsTable.value).map {
+                TopicRef(it[TopicsTable.value], it[TopicsTable.label])
+            },
+        tags = TagsTable.selectAll().orderBy(TagsTable.id).map { TagRef(it[TagsTable.id], it[TagsTable.name]) },
+        segments =
+            SegmentsTable.selectAll().orderBy(SegmentsTable.code).map {
+                SegmentRef(
+                    it[SegmentsTable.code],
+                    it[SegmentsTable.name],
+                    it[SegmentsTable.type],
+                    it[SegmentsTable.state],
+                    it[SegmentsTable.count],
+                )
+            },
+        places =
+            PlacesTable.selectAll().orderBy(PlacesTable.id).map {
+                PlaceRef(
+                    it[PlacesTable.id],
+                    it[PlacesTable.code],
+                    it[PlacesTable.description],
+                    it[PlacesTable.defaultBanner],
+                    it[PlacesTable.state],
+                )
+            },
+        bannerTypes =
+            BannerTypesTable.selectAll().orderBy(BannerTypesTable.id).map {
+                BannerTypeRef(
+                    it[BannerTypesTable.code],
+                    it[BannerTypesTable.titleMax],
+                    it[BannerTypesTable.textMax],
+                    splitChannels(it[BannerTypesTable.channels]),
+                )
+            },
+        channels =
+            ChannelsTable.selectAll().orderBy(ChannelsTable.id).map {
+                ChannelRef(it[ChannelsTable.code], it[ChannelsTable.description])
+            },
+    )
 
 fun loadLiveCatalog(): LiveCatalog {
     val names = CampaignsTable.selectAll().associate { it[CampaignsTable.name] to it[CampaignsTable.id] }
@@ -99,17 +120,21 @@ fun loadLiveCatalog(): LiveCatalog {
         topics = TopicsTable.selectAll().map { it[TopicsTable.value] }.toSet(),
         tagIds = TagsTable.selectAll().map { it[TagsTable.id] }.toSet(),
         segmentStates = SegmentsTable.selectAll().associate { it[SegmentsTable.code] to it[SegmentsTable.state] },
-        places = PlacesTable.selectAll().associate {
-            it[PlacesTable.id] to PlaceInfo(it[PlacesTable.id], it[PlacesTable.code], it[PlacesTable.defaultBanner], it[PlacesTable.state])
-        },
-        bannerTypes = BannerTypesTable.selectAll().associate {
-            it[BannerTypesTable.code] to BannerTypeInfo(
-                it[BannerTypesTable.id],
-                it[BannerTypesTable.titleMax],
-                it[BannerTypesTable.textMax],
-                splitChannels(it[BannerTypesTable.channels]).toSet(),
-            )
-        },
+        places =
+            PlacesTable.selectAll().associate {
+                it[PlacesTable.id] to
+                    PlaceInfo(it[PlacesTable.id], it[PlacesTable.code], it[PlacesTable.defaultBanner], it[PlacesTable.state])
+            },
+        bannerTypes =
+            BannerTypesTable.selectAll().associate {
+                it[BannerTypesTable.code] to
+                    BannerTypeInfo(
+                        it[BannerTypesTable.id],
+                        it[BannerTypesTable.titleMax],
+                        it[BannerTypesTable.textMax],
+                        splitChannels(it[BannerTypesTable.channels]).toSet(),
+                    )
+            },
         channels = ChannelsTable.selectAll().map { it[ChannelsTable.code] }.toSet(),
     ).also { cachedNames = names }
 }
@@ -120,29 +145,45 @@ fun listTopics() = TopicsTable.selectAll().orderBy(TopicsTable.value).map { Topi
 
 fun listTags() = TagsTable.selectAll().orderBy(TagsTable.id).map { TagRef(it[TagsTable.id], it[TagsTable.name]) }
 
-fun listSegments() = SegmentsTable.selectAll().orderBy(SegmentsTable.code).map {
-    SegmentRef(it[SegmentsTable.code], it[SegmentsTable.name], it[SegmentsTable.type], it[SegmentsTable.state], it[SegmentsTable.count])
-}
+fun listSegments() =
+    SegmentsTable.selectAll().orderBy(SegmentsTable.code).map {
+        SegmentRef(
+            it[SegmentsTable.code],
+            it[SegmentsTable.name],
+            it[SegmentsTable.type],
+            it[SegmentsTable.state],
+            it[SegmentsTable.count],
+        )
+    }
 
-fun listPlaces() = PlacesTable.selectAll().orderBy(PlacesTable.id).map {
-    PlaceRef(it[PlacesTable.id], it[PlacesTable.code], it[PlacesTable.description], it[PlacesTable.defaultBanner], it[PlacesTable.state])
-}
+fun listPlaces() =
+    PlacesTable.selectAll().orderBy(PlacesTable.id).map {
+        PlaceRef(
+            it[PlacesTable.id],
+            it[PlacesTable.code],
+            it[PlacesTable.description],
+            it[PlacesTable.defaultBanner],
+            it[PlacesTable.state],
+        )
+    }
 
-fun listBannerTypes() = BannerTypesTable.selectAll().orderBy(BannerTypesTable.id).map {
-    BannerTypeDto(
-        it[BannerTypesTable.id],
-        it[BannerTypesTable.code],
-        it[BannerTypesTable.description],
-        it[BannerTypesTable.previewForm],
-        it[BannerTypesTable.titleMax],
-        it[BannerTypesTable.textMax],
-        splitChannels(it[BannerTypesTable.channels]),
-    )
-}
+fun listBannerTypes() =
+    BannerTypesTable.selectAll().orderBy(BannerTypesTable.id).map {
+        BannerTypeDto(
+            it[BannerTypesTable.id],
+            it[BannerTypesTable.code],
+            it[BannerTypesTable.description],
+            it[BannerTypesTable.previewForm],
+            it[BannerTypesTable.titleMax],
+            it[BannerTypesTable.textMax],
+            splitChannels(it[BannerTypesTable.channels]),
+        )
+    }
 
-fun listChannels() = ChannelsTable.selectAll().orderBy(ChannelsTable.id).map {
-    ChannelDto(it[ChannelsTable.id], it[ChannelsTable.code], it[ChannelsTable.description])
-}
+fun listChannels() =
+    ChannelsTable.selectAll().orderBy(ChannelsTable.id).map {
+        ChannelDto(it[ChannelsTable.id], it[ChannelsTable.code], it[ChannelsTable.description])
+    }
 
 fun listCampaignItems(): List<CampaignListItem> = CampaignsTable.selectAll().orderBy(CampaignsTable.id).map { it.toListItem() }
 
@@ -155,34 +196,37 @@ fun campaignDetails(id: Long): CampaignDetailsDto {
     CampaignSegmentsTable.selectAll().where { CampaignSegmentsTable.campaignId eq id }.forEach {
         if (it[CampaignSegmentsTable.included]) included += it[CampaignSegmentsTable.code] else excluded += it[CampaignSegmentsTable.code]
     }
-    val banners = BannersTable.selectAll().where { BannersTable.campaignId eq id }.map {
-        BannerDto(
-            it[BannersTable.id],
-            it[BannersTable.campaignId],
-            it[BannersTable.name],
-            it[BannersTable.bannerTypeId],
-            AppJson.parseToJsonElement(it[BannersTable.contentJson]),
-        )
-    }
-    val contents = ContentsTable.selectAll().where { ContentsTable.campaignId eq id }.map {
-        ContentDto(
-            it[ContentsTable.id],
-            it[ContentsTable.campaignId],
-            it[ContentsTable.name],
-            it[ContentsTable.contentType],
-            AppJson.parseToJsonElement(it[ContentsTable.contentJson]),
-        )
-    }
-    val creatives = CreativesTable.selectAll().where { CreativesTable.campaignId eq id }.map {
-        CreativeDto(
-            it[CreativesTable.id],
-            it[CreativesTable.campaignId],
-            it[CreativesTable.name],
-            it[CreativesTable.bannerId],
-            it[CreativesTable.contentId],
-            it[CreativesTable.channelCode],
-        )
-    }
+    val banners =
+        BannersTable.selectAll().where { BannersTable.campaignId eq id }.map {
+            BannerDto(
+                it[BannersTable.id],
+                it[BannersTable.campaignId],
+                it[BannersTable.name],
+                it[BannersTable.bannerTypeId],
+                AppJson.parseToJsonElement(it[BannersTable.contentJson]),
+            )
+        }
+    val contents =
+        ContentsTable.selectAll().where { ContentsTable.campaignId eq id }.map {
+            ContentDto(
+                it[ContentsTable.id],
+                it[ContentsTable.campaignId],
+                it[ContentsTable.name],
+                it[ContentsTable.contentType],
+                AppJson.parseToJsonElement(it[ContentsTable.contentJson]),
+            )
+        }
+    val creatives =
+        CreativesTable.selectAll().where { CreativesTable.campaignId eq id }.map {
+            CreativeDto(
+                it[CreativesTable.id],
+                it[CreativesTable.campaignId],
+                it[CreativesTable.name],
+                it[CreativesTable.bannerId],
+                it[CreativesTable.contentId],
+                it[CreativesTable.channelCode],
+            )
+        }
     return CampaignDetailsDto(
         id = row[CampaignsTable.id],
         name = row[CampaignsTable.name],
@@ -240,7 +284,11 @@ fun stateOf(id: Long): CampaignStateDto {
     return CampaignStateDto(row[CampaignsTable.id], row[CampaignsTable.state], row[CampaignsTable.published])
 }
 
-fun applyCommit(draft: DraftCampaign, action: String, caller: Caller): DraftCampaign {
+fun applyCommit(
+    draft: DraftCampaign,
+    action: String,
+    caller: Caller,
+): DraftCampaign {
     if (caller.role != "campaignManager") throw roleForbidden()
     return when (action) {
         "CREATE_TAG" -> createTag(draft, caller.user)
@@ -255,7 +303,11 @@ fun applyCommit(draft: DraftCampaign, action: String, caller: Caller): DraftCamp
     }
 }
 
-fun confirmDraft(sessionId: String, pathId: Long, caller: Caller): CampaignDetailsDto {
+fun confirmDraft(
+    sessionId: String,
+    pathId: Long,
+    caller: Caller,
+): CampaignDetailsDto {
     if (caller.role != "campaignManager") throw roleForbidden()
     val row = SessionsTable.selectAll().where { SessionsTable.id eq sessionId }.singleOrNull() ?: throw notFound("Сессия не найдена")
     val draft = AppJson.decodeFromString(DraftCampaign.serializer(), row[SessionsTable.draftJson])
@@ -267,7 +319,10 @@ fun confirmDraft(sessionId: String, pathId: Long, caller: Caller): CampaignDetai
     return campaignDetails(saved.savedCampaignId!!)
 }
 
-fun moderate(id: Long, actor: String) {
+fun moderate(
+    id: Long,
+    actor: String,
+) {
     val row = campaignRow(id)
     val state = row[CampaignsTable.state]
     if (state != "DRAFT" && state != "NEEDS_WORK") {
@@ -283,7 +338,10 @@ fun moderate(id: Long, actor: String) {
     writeAudit(id, "CAMPAIGN", id, "TO_MODERATION", null, actor, null)
 }
 
-fun approve(id: Long, actor: String) {
+fun approve(
+    id: Long,
+    actor: String,
+) {
     val row = campaignRow(id)
     if (row[CampaignsTable.state] != "ON_MODERATION") {
         throw bad(ApiError("APPROVE_NOT_ALLOWED", "Одобрение доступно только из модерации", "state"))
@@ -295,7 +353,11 @@ fun approve(id: Long, actor: String) {
     writeAudit(id, "CAMPAIGN", id, "APPROVE", null, actor, null)
 }
 
-fun decline(id: Long, actor: String, comment: String?) {
+fun decline(
+    id: Long,
+    actor: String,
+    comment: String?,
+) {
     if (comment.isNullOrBlank()) throw bad(ApiError("comment", "Комментарий обязателен", "comment"))
     val row = campaignRow(id)
     if (row[CampaignsTable.state] != "ON_MODERATION") {
@@ -308,7 +370,10 @@ fun decline(id: Long, actor: String, comment: String?) {
     writeAudit(id, "CAMPAIGN", id, "DECLINE", null, actor, comment.trim())
 }
 
-fun activate(id: Long, actor: String) {
+fun activate(
+    id: Long,
+    actor: String,
+) {
     val row = campaignRow(id)
     if (row[CampaignsTable.state] != "APPROVED") {
         throw bad(ApiError("ACTIVATE_NOT_ALLOWED", "Активация доступна только из состояния APPROVED", "state"))
@@ -329,20 +394,33 @@ fun createSession(id: String) {
     }
 }
 
-fun sessionExists(id: String): Boolean = SessionsTable.selectAll().where { SessionsTable.id eq id }.empty().not()
+fun sessionExists(id: String): Boolean =
+    SessionsTable
+        .selectAll()
+        .where { SessionsTable.id eq id }
+        .empty()
+        .not()
 
 fun loadDraft(sessionId: String): DraftCampaign {
     val row = SessionsTable.selectAll().where { SessionsTable.id eq sessionId }.singleOrNull() ?: throw notFound("Сессия не найдена")
     return AppJson.decodeFromString(DraftCampaign.serializer(), row[SessionsTable.draftJson])
 }
 
-fun saveDraft(sessionId: String, draft: DraftCampaign) {
+fun saveDraft(
+    sessionId: String,
+    draft: DraftCampaign,
+) {
     SessionsTable.update({ SessionsTable.id eq sessionId }) {
         it[draftJson] = AppJson.encodeToString(DraftCampaign.serializer(), draft)
     }
 }
 
-fun appendMessage(sessionId: String, role: String, text: String, blocks: List<UiBlock>?) {
+fun appendMessage(
+    sessionId: String,
+    role: String,
+    text: String,
+    blocks: List<UiBlock>?,
+) {
     MessagesTable.insert {
         it[MessagesTable.sessionId] = sessionId
         it[MessagesTable.role] = role
@@ -364,7 +442,10 @@ fun listMessages(sessionId: String): List<MessageDto> {
     }
 }
 
-fun insertJob(id: String, sessionId: String) {
+fun insertJob(
+    id: String,
+    sessionId: String,
+) {
     JobsTable.insert {
         it[JobsTable.id] = id
         it[JobsTable.sessionId] = sessionId
@@ -375,7 +456,10 @@ fun insertJob(id: String, sessionId: String) {
 
 fun jobRow(id: String): ResultRow = JobsTable.selectAll().where { JobsTable.id eq id }.singleOrNull() ?: throw notFound("Задача не найдена")
 
-fun finishJob(id: String, reply: AssistantReply) {
+fun finishJob(
+    id: String,
+    reply: AssistantReply,
+) {
     JobsTable.update({ JobsTable.id eq id }) {
         it[status] = "DONE"
         it[resultJson] = AppJson.encodeToString(AssistantReply.serializer(), reply)
@@ -383,7 +467,10 @@ fun finishJob(id: String, reply: AssistantReply) {
     }
 }
 
-fun failJob(id: String, message: String) {
+fun failJob(
+    id: String,
+    message: String,
+) {
     if (JobsTable.selectAll().where { JobsTable.id eq id }.empty()) return
     JobsTable.update({ JobsTable.id eq id }) {
         it[status] = "FAILED"
@@ -391,7 +478,10 @@ fun failJob(id: String, message: String) {
     }
 }
 
-private fun createTag(draft: DraftCampaign, actor: String): DraftCampaign {
+private fun createTag(
+    draft: DraftCampaign,
+    actor: String,
+): DraftCampaign {
     val proposal = draft.pendingProposal ?: throw bad(ApiError("pendingProposal", "Нет предложения тега", "pendingProposal"))
     if (proposal.kind != "TAG") throw bad(ApiError("kind", "Ожидалось предложение тега", "kind"))
     val name = proposal.name.trim()
@@ -405,7 +495,10 @@ private fun createTag(draft: DraftCampaign, actor: String): DraftCampaign {
     return draft.copy(tagIds = (draft.tagIds + id).distinct(), pendingProposal = null)
 }
 
-private fun createPlace(draft: DraftCampaign, actor: String): DraftCampaign {
+private fun createPlace(
+    draft: DraftCampaign,
+    actor: String,
+): DraftCampaign {
     val proposal = draft.pendingProposal ?: throw bad(ApiError("pendingProposal", "Нет предложения места", "pendingProposal"))
     if (proposal.kind != "PLACE") throw bad(ApiError("kind", "Ожидалось предложение места", "kind"))
     val code = proposal.code?.trim().orEmpty()
@@ -426,74 +519,91 @@ private fun createPlace(draft: DraftCampaign, actor: String): DraftCampaign {
     return draft.copy(placeIds = (draft.placeIds + id).distinct(), pendingProposal = null)
 }
 
-private fun saveCampaign(draft: DraftCampaign, actor: String): DraftCampaign {
+private fun saveCampaign(
+    draft: DraftCampaign,
+    actor: String,
+): DraftCampaign {
     val catalog = loadLiveCatalog()
-    val input = CheckInput(
-        id = draft.savedCampaignId,
-        name = draft.name,
-        marketingName = draft.marketingName,
-        startDate = draft.startDate,
-        startTime = draft.startTime,
-        endDate = draft.endDate,
-        endTime = draft.endTime,
-        topic = draft.topic,
-        tagIds = draft.tagIds,
-        keywords = draft.keywords,
-        audienceType = draft.audienceType,
-        included = draft.includedSegments,
-        excluded = draft.excludedSegments,
-        placeIds = draft.placeIds,
-        banners = listOfNotNull(draft.banner),
-        existingNames = cachedNames,
-    )
+    val input =
+        CheckInput(
+            id = draft.savedCampaignId,
+            name = draft.name,
+            marketingName = draft.marketingName,
+            startDate = draft.startDate,
+            startTime = draft.startTime,
+            endDate = draft.endDate,
+            endTime = draft.endTime,
+            topic = draft.topic,
+            tagIds = draft.tagIds,
+            keywords = draft.keywords,
+            audienceType = draft.audienceType,
+            included = draft.includedSegments,
+            excluded = draft.excludedSegments,
+            placeIds = draft.placeIds,
+            banners = listOfNotNull(draft.banner),
+            existingNames = cachedNames,
+        )
     val checked = checkCampaign(input, catalog)
     if (checked.missing.isNotEmpty()) throw ApiException(HttpStatusCode.NotFound, checked.missing)
     if (checked.errors.isNotEmpty()) throw bad(checked.errors)
     val weight = draft.weight ?: 0.0
     val ctr = draft.initialCtr ?: 15.0
-    val id = if (draft.savedCampaignId == null) {
-        insertCampaign(draft, actor, weight, ctr)
-    } else {
-        updateCampaign(draft, actor, weight, ctr)
-    }
+    val id =
+        if (draft.savedCampaignId == null) {
+            insertCampaign(draft, actor, weight, ctr)
+        } else {
+            updateCampaign(draft, actor, weight, ctr)
+        }
     replaceLinks(id, draft)
     val banner = draft.banner
     if (banner != null) replaceBanner(id, banner, catalog, actor, draft.savedCampaignId != null)
     return draft.copy(savedCampaignId = id, weight = weight, initialCtr = ctr)
 }
 
-private fun insertCampaign(draft: DraftCampaign, actor: String, weight: Double, ctr: Double): Long {
-    val id = CampaignsTable.insert {
-        it[name] = draft.name!!.trim()
-        it[marketingName] = draft.marketingName.blankToNull()
-        it[startDate] = draft.startDate!!.trim()
-        it[startTime] = draft.startTime!!.trim()
-        it[endDate] = draft.endDate.blankToNull()
-        it[endTime] = draft.endTime.blankToNull()
-        it[topic] = draft.topic!!.trim()
-        it[keywords] = draft.keywords.blankToNull()
-        it[audienceType] = draft.audienceType!!.trim()
-        it[CampaignsTable.weight] = weight
-        it[initialCtr] = ctr
-        it[state] = "DRAFT"
-        it[published] = false
-        it[author] = actor
-        it[lastEditAuthor] = actor
-    } get CampaignsTable.id
+private fun insertCampaign(
+    draft: DraftCampaign,
+    actor: String,
+    weight: Double,
+    ctr: Double,
+): Long {
+    val id =
+        CampaignsTable.insert {
+            it[name] = draft.name!!.trim()
+            it[marketingName] = draft.marketingName.blankToNull()
+            it[startDate] = draft.startDate!!.trim()
+            it[startTime] = draft.startTime!!.trim()
+            it[endDate] = draft.endDate.blankToNull()
+            it[endTime] = draft.endTime.blankToNull()
+            it[topic] = draft.topic!!.trim()
+            it[keywords] = draft.keywords.blankToNull()
+            it[audienceType] = draft.audienceType!!.trim()
+            it[CampaignsTable.weight] = weight
+            it[initialCtr] = ctr
+            it[state] = "DRAFT"
+            it[published] = false
+            it[author] = actor
+            it[lastEditAuthor] = actor
+        } get CampaignsTable.id
     writeAudit(id, "CAMPAIGN", id, "CREATE", null, actor, null)
     writeAudit(id, "SEGMENTS", id, "CREATE", null, actor, null)
     return id
 }
 
-private fun updateCampaign(draft: DraftCampaign, actor: String, weight: Double, ctr: Double): Long {
+private fun updateCampaign(
+    draft: DraftCampaign,
+    actor: String,
+    weight: Double,
+    ctr: Double,
+): Long {
     val id = draft.savedCampaignId!!
     val row = campaignRow(id)
-    val next = when (val state = row[CampaignsTable.state]) {
-        "DRAFT", "NEEDS_WORK" -> state
-        "APPROVED" -> "DRAFT"
-        "ACTIVE", "ACTIVE_EDITING" -> "ACTIVE_EDITING"
-        else -> throw bad(ApiError("UPDATE_NOT_ALLOWED", "Кампанию в состоянии $state нельзя изменить", "state"))
-    }
+    val next =
+        when (val state = row[CampaignsTable.state]) {
+            "DRAFT", "NEEDS_WORK" -> state
+            "APPROVED" -> "DRAFT"
+            "ACTIVE", "ACTIVE_EDITING" -> "ACTIVE_EDITING"
+            else -> throw bad(ApiError("UPDATE_NOT_ALLOWED", "Кампанию в состоянии $state нельзя изменить", "state"))
+        }
     val name = draft.name!!.trim()
     val marketing = draft.marketingName.blankToNull()
     val startDate = draft.startDate!!.trim()
@@ -503,22 +613,23 @@ private fun updateCampaign(draft: DraftCampaign, actor: String, weight: Double, 
     val topic = draft.topic!!.trim()
     val keywords = draft.keywords.blankToNull()
     val audience = draft.audienceType!!.trim()
-    val changes = headerDiff(
-        mapOf(
-            "name" to (row[CampaignsTable.name] to name),
-            "marketingName" to (row[CampaignsTable.marketingName] to marketing),
-            "startDate" to (row[CampaignsTable.startDate] to startDate),
-            "startTime" to (row[CampaignsTable.startTime] to startTime),
-            "endDate" to (row[CampaignsTable.endDate] to endDate),
-            "endTime" to (row[CampaignsTable.endTime] to endTime),
-            "topic" to (row[CampaignsTable.topic] to topic),
-            "keywords" to (row[CampaignsTable.keywords] to keywords),
-            "audienceType" to (row[CampaignsTable.audienceType] to audience),
-            "weight" to (row[CampaignsTable.weight].toString() to weight.toString()),
-            "initialCtr" to (row[CampaignsTable.initialCtr].toString() to ctr.toString()),
-            "state" to (row[CampaignsTable.state] to next),
-        ),
-    )
+    val changes =
+        headerDiff(
+            mapOf(
+                "name" to (row[CampaignsTable.name] to name),
+                "marketingName" to (row[CampaignsTable.marketingName] to marketing),
+                "startDate" to (row[CampaignsTable.startDate] to startDate),
+                "startTime" to (row[CampaignsTable.startTime] to startTime),
+                "endDate" to (row[CampaignsTable.endDate] to endDate),
+                "endTime" to (row[CampaignsTable.endTime] to endTime),
+                "topic" to (row[CampaignsTable.topic] to topic),
+                "keywords" to (row[CampaignsTable.keywords] to keywords),
+                "audienceType" to (row[CampaignsTable.audienceType] to audience),
+                "weight" to (row[CampaignsTable.weight].toString() to weight.toString()),
+                "initialCtr" to (row[CampaignsTable.initialCtr].toString() to ctr.toString()),
+                "state" to (row[CampaignsTable.state] to next),
+            ),
+        )
     CampaignsTable.update({ CampaignsTable.id eq id }) {
         it[CampaignsTable.name] = name
         it[marketingName] = marketing
@@ -539,7 +650,10 @@ private fun updateCampaign(draft: DraftCampaign, actor: String, weight: Double, 
     return id
 }
 
-private fun replaceLinks(id: Long, draft: DraftCampaign) {
+private fun replaceLinks(
+    id: Long,
+    draft: DraftCampaign,
+) {
     CampaignTagsTable.deleteWhere { campaignId eq id }
     draft.tagIds.distinct().forEach { tagId ->
         CampaignTagsTable.insert {
@@ -571,24 +685,36 @@ private fun replaceLinks(id: Long, draft: DraftCampaign) {
     }
 }
 
-private fun replaceBanner(campaignId: Long, banner: BannerDraft, catalog: LiveCatalog, actor: String, replacing: Boolean) {
+private fun replaceBanner(
+    campaignId: Long,
+    banner: BannerDraft,
+    catalog: LiveCatalog,
+    actor: String,
+    replacing: Boolean,
+) {
     val had = BannersTable.selectAll().where { BannersTable.campaignId eq campaignId }.any()
     CreativesTable.deleteWhere { CreativesTable.campaignId eq campaignId }
     BannersTable.deleteWhere { BannersTable.campaignId eq campaignId }
     val typeId = catalog.bannerTypes.getValue(banner.bannerType).id
-    val content = BannerContentJson(
-        actionType = banner.actionType,
-        title = banner.title,
-        text = banner.text,
-        link = if (banner.actionType in linkActions) banner.link else null,
-        button = banner.cta?.trim()?.takeIf { it.isNotEmpty() }?.let { BannerButtonJson(it) },
-    )
-    val bannerId = BannersTable.insert {
-        it[BannersTable.campaignId] = campaignId
-        it[name] = banner.title?.trim()?.takeIf { it.isNotEmpty() } ?: "Баннер"
-        it[bannerTypeId] = typeId
-        it[contentJson] = AppJson.encodeToString(BannerContentJson.serializer(), content)
-    } get BannersTable.id
+    val content =
+        BannerContentJson(
+            actionType = banner.actionType,
+            title = banner.title,
+            text = banner.text,
+            link = if (banner.actionType in linkActions) banner.link else null,
+            button =
+                banner.cta
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { BannerButtonJson(it) },
+        )
+    val bannerId =
+        BannersTable.insert {
+            it[BannersTable.campaignId] = campaignId
+            it[name] = banner.title?.trim()?.takeIf { it.isNotEmpty() } ?: "Баннер"
+            it[bannerTypeId] = typeId
+            it[contentJson] = AppJson.encodeToString(BannerContentJson.serializer(), content)
+        } get BannersTable.id
     CreativesTable.insert {
         it[CreativesTable.campaignId] = campaignId
         it[name] = "Креатив ${banner.channel}"
@@ -632,8 +758,11 @@ private fun storedInput(id: Long): CheckInput {
 
 private fun storedBanners(campaignId: Long): List<BannerDraft> {
     val typeById = BannerTypesTable.selectAll().associate { it[BannerTypesTable.id] to it[BannerTypesTable.code] }
-    val channelByBanner = CreativesTable.selectAll().where { CreativesTable.campaignId eq campaignId }
-        .associate { it[CreativesTable.bannerId] to it[CreativesTable.channelCode] }
+    val channelByBanner =
+        CreativesTable
+            .selectAll()
+            .where { CreativesTable.campaignId eq campaignId }
+            .associate { it[CreativesTable.bannerId] to it[CreativesTable.channelCode] }
     return BannersTable.selectAll().where { BannersTable.campaignId eq campaignId }.map { row ->
         val content = AppJson.decodeFromString(BannerContentJson.serializer(), row[BannersTable.contentJson])
         BannerDraft(
@@ -650,25 +779,41 @@ private fun storedBanners(campaignId: Long): List<BannerDraft> {
 
 private fun creativeTypeCodes(campaignId: Long): List<String> {
     val typeById = BannerTypesTable.selectAll().associate { it[BannerTypesTable.id] to it[BannerTypesTable.code] }
-    val bannerType = BannersTable.selectAll().where { BannersTable.campaignId eq campaignId }
-        .associate { it[BannersTable.id] to typeById[it[BannersTable.bannerTypeId]] }
-    return CreativesTable.selectAll().where { CreativesTable.campaignId eq campaignId }.mapNotNull { bannerType[it[CreativesTable.bannerId]] }
+    val bannerType =
+        BannersTable
+            .selectAll()
+            .where { BannersTable.campaignId eq campaignId }
+            .associate { it[BannersTable.id] to typeById[it[BannersTable.bannerTypeId]] }
+    return CreativesTable
+        .selectAll()
+        .where {
+            CreativesTable.campaignId eq campaignId
+        }.mapNotNull { bannerType[it[CreativesTable.bannerId]] }
 }
 
 private fun campaignRow(id: Long): ResultRow =
     CampaignsTable.selectAll().where { CampaignsTable.id eq id }.singleOrNull() ?: throw notFound("Кампания не найдена")
 
-private fun ResultRow.toListItem() = CampaignListItem(
-    id = this[CampaignsTable.id],
-    name = this[CampaignsTable.name],
-    state = this[CampaignsTable.state],
-    published = this[CampaignsTable.published],
-    topic = this[CampaignsTable.topic],
-    startDate = this[CampaignsTable.startDate],
-    endDate = this[CampaignsTable.endDate],
-)
+private fun ResultRow.toListItem() =
+    CampaignListItem(
+        id = this[CampaignsTable.id],
+        name = this[CampaignsTable.name],
+        state = this[CampaignsTable.state],
+        published = this[CampaignsTable.published],
+        topic = this[CampaignsTable.topic],
+        startDate = this[CampaignsTable.startDate],
+        endDate = this[CampaignsTable.endDate],
+    )
 
-private fun writeAudit(campaignId: Long?, entity: String, entityId: Long, action: String, changes: String?, actor: String, comment: String?) {
+private fun writeAudit(
+    campaignId: Long?,
+    entity: String,
+    entityId: Long,
+    action: String,
+    changes: String?,
+    actor: String,
+    comment: String?,
+) {
     AuditTable.insert {
         it[AuditTable.campaignId] = campaignId
         it[AuditTable.entity] = entity
@@ -682,16 +827,20 @@ private fun writeAudit(campaignId: Long?, entity: String, entityId: Long, action
 }
 
 private fun headerDiff(fields: Map<String, Pair<String?, String?>>): String? {
-    val obj = buildJsonObject {
-        fields.forEach { (key, pair) ->
-            if (pair.first != pair.second) {
-                put(key, buildJsonObject {
-                    put("from", pair.first?.let { JsonPrimitive(it) } ?: JsonNull)
-                    put("to", pair.second?.let { JsonPrimitive(it) } ?: JsonNull)
-                })
+    val obj =
+        buildJsonObject {
+            fields.forEach { (key, pair) ->
+                if (pair.first != pair.second) {
+                    put(
+                        key,
+                        buildJsonObject {
+                            put("from", pair.first?.let { JsonPrimitive(it) } ?: JsonNull)
+                            put("to", pair.second?.let { JsonPrimitive(it) } ?: JsonNull)
+                        },
+                    )
+                }
             }
         }
-    }
     return obj.takeIf { it.isNotEmpty() }?.toString()
 }
 

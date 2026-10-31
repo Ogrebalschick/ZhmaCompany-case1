@@ -26,6 +26,8 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    maxParallelForks = 1
+    maxHeapSize = "256m"
     outputs.upToDateWhen { false }
     testLogging {
         events("passed", "skipped", "failed")
