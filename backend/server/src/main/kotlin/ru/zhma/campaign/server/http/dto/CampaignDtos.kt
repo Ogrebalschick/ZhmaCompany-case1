@@ -1,49 +1,8 @@
-package ru.zhma.campaign.server.http
+package ru.zhma.campaign.server.http.dto
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
-import ru.zhma.campaign.ai.model.AssistantReply
-
-@Serializable
-data class SessionResponse(val sessionId: String)
-
-@Serializable
-data class PostMessageBody(val text: String = "")
-
-@Serializable
-data class JobAccepted(val jobId: String)
-
-@Serializable
-data class JobStatusResponse(
-    val status: String,
-    val result: AssistantReply? = null,
-    val error: String? = null,
-)
-
-@Serializable
-data class MessageDto(
-    val role: String,
-    val text: String,
-    val blocks: JsonElement,
-    val createdAt: String,
-)
-
-@Serializable
-data class MessagesResponse(val messages: List<MessageDto>)
-
-@Serializable
-data class BannerTypeDto(
-    val id: Long,
-    val code: String,
-    val description: String,
-    val previewForm: String,
-    val titleMaxLength: Int,
-    val textMaxLength: Int,
-    val channels: List<String>,
-)
-
-@Serializable
-data class ChannelDto(val id: Long, val code: String, val description: String)
+import ru.zhma.campaign.server.http.ApiError
 
 @Serializable
 data class SegmentsDto(val included: List<String>, val excluded: List<String>)
@@ -109,27 +68,4 @@ data class CampaignStateDto(val id: Long, val state: String, val published: Bool
 data class WarningsResponse(val errors: List<ApiError>, val warnings: List<String>)
 
 @Serializable
-data class AuditEntryDto(
-    val entity: String,
-    val entityId: Long,
-    val action: String,
-    val changes: JsonElement? = null,
-    val at: String,
-    val actor: String,
-    val comment: String? = null,
-)
-
-@Serializable
 data class CommentBody(val comment: String? = null)
-
-@Serializable
-data class BannerButtonJson(val name: String)
-
-@Serializable
-data class BannerContentJson(
-    val actionType: String,
-    val title: String? = null,
-    val text: String? = null,
-    val link: String? = null,
-    val button: BannerButtonJson? = null,
-)

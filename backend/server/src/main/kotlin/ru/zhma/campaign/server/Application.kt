@@ -18,9 +18,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import ru.zhma.campaign.server.db.DatabaseFactory
+import ru.zhma.campaign.server.http.ApiError
 import ru.zhma.campaign.server.http.ApiException
 import ru.zhma.campaign.server.http.ErrorResponse
-import ru.zhma.campaign.server.http.apiRoutes
+import ru.zhma.campaign.server.http.route.apiRoutes
 import ru.zhma.campaign.server.jobs.JobProcessor
 import ru.zhma.campaign.server.json.AppJson
 
@@ -57,7 +58,7 @@ fun Application.module(dbPath: String = System.getProperty("campaign.db") ?: "da
             if (!call.response.isSent) {
                 call.respond(
                     HttpStatusCode.InternalServerError,
-                    ErrorResponse(listOf(ru.zhma.campaign.server.http.ApiError("INTERNAL", "Внутренняя ошибка", null))),
+                    ErrorResponse(listOf(ApiError("INTERNAL", "Внутренняя ошибка", null))),
                 )
             }
         }

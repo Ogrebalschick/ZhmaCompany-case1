@@ -1,10 +1,16 @@
 package ru.zhma.campaign.server.jobs
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import org.slf4j.LoggerFactory
 import ru.zhma.campaign.ai.agent.AgentTurn
+import ru.zhma.campaign.ai.model.CampaignListItem
+import ru.zhma.campaign.ai.model.CatalogSnapshot
+import ru.zhma.campaign.ai.model.DraftCampaign
 import ru.zhma.campaign.ai.model.TurnInput
 import ru.zhma.campaign.server.db.DatabaseFactory
 import ru.zhma.campaign.server.http.ApiException
@@ -55,7 +61,7 @@ class JobProcessor(private val scope: CoroutineScope) {
                 }
             } catch (timeout: TimeoutCancellationException) {
                 markFailed(jobId, "Превышено время ожидания")
-            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Throwable) {
                 markFailed(jobId, shortMessage(error))
@@ -64,22 +70,22 @@ class JobProcessor(private val scope: CoroutineScope) {
     }
 
     fun cancel() {
-        scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
+        scope.coroutineContext[Job]?.cancel()
     }
 
     private suspend fun markFailed(jobId: String, message: String) {
         try {
             DatabaseFactory.db { failJob(jobId, message) }
         } catch (error: Throwable) {
-            org.slf4j.LoggerFactory.getLogger(JobProcessor::class.java).error("job {} failed: {}", jobId, message, error)
+            LoggerFactory.getLogger(JobProcessor::class.java).error("job {} failed: {}", jobId, message, error)
         }
     }
 }
 
 private data class Loaded(
-    val draft: ru.zhma.campaign.ai.model.DraftCampaign,
-    val catalog: ru.zhma.campaign.ai.model.CatalogSnapshot,
-    val campaigns: List<ru.zhma.campaign.ai.model.CampaignListItem>,
+    val draft: DraftCampaign,
+    val catalog: CatalogSnapshot,
+    val campaigns: List<CampaignListItem>,
 )
 
 private fun shortMessage(error: Throwable): String {

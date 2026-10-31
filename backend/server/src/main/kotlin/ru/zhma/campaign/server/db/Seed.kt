@@ -2,6 +2,12 @@ package ru.zhma.campaign.server.db
 
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
+import ru.zhma.campaign.server.db.table.BannerTypesTable
+import ru.zhma.campaign.server.db.table.ChannelsTable
+import ru.zhma.campaign.server.db.table.PlacesTable
+import ru.zhma.campaign.server.db.table.SegmentsTable
+import ru.zhma.campaign.server.db.table.TagsTable
+import ru.zhma.campaign.server.db.table.TopicsTable
 
 object Seed {
     fun seedIfEmpty() {

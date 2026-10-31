@@ -1,5 +1,6 @@
 package ru.zhma.campaign.server.service
 
+import io.ktor.http.HttpStatusCode
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -26,38 +27,39 @@ import ru.zhma.campaign.ai.model.SegmentRef
 import ru.zhma.campaign.ai.model.TagRef
 import ru.zhma.campaign.ai.model.TopicRef
 import ru.zhma.campaign.ai.model.UiBlock
-import ru.zhma.campaign.server.db.AuditTable
-import ru.zhma.campaign.server.db.BannerTypesTable
-import ru.zhma.campaign.server.db.BannersTable
-import ru.zhma.campaign.server.db.CampaignPlacesTable
-import ru.zhma.campaign.server.db.CampaignSegmentsTable
-import ru.zhma.campaign.server.db.CampaignTagsTable
-import ru.zhma.campaign.server.db.CampaignsTable
-import ru.zhma.campaign.server.db.ChannelsTable
-import ru.zhma.campaign.server.db.ContentsTable
-import ru.zhma.campaign.server.db.CreativesTable
-import ru.zhma.campaign.server.db.JobsTable
-import ru.zhma.campaign.server.db.MessagesTable
-import ru.zhma.campaign.server.db.PlacesTable
-import ru.zhma.campaign.server.db.SegmentsTable
-import ru.zhma.campaign.server.db.SessionsTable
-import ru.zhma.campaign.server.db.TagsTable
-import ru.zhma.campaign.server.db.TopicsTable
+import ru.zhma.campaign.server.db.table.AuditTable
+import ru.zhma.campaign.server.db.table.BannerTypesTable
+import ru.zhma.campaign.server.db.table.BannersTable
+import ru.zhma.campaign.server.db.table.CampaignPlacesTable
+import ru.zhma.campaign.server.db.table.CampaignSegmentsTable
+import ru.zhma.campaign.server.db.table.CampaignTagsTable
+import ru.zhma.campaign.server.db.table.CampaignsTable
+import ru.zhma.campaign.server.db.table.ChannelsTable
+import ru.zhma.campaign.server.db.table.ContentsTable
+import ru.zhma.campaign.server.db.table.CreativesTable
+import ru.zhma.campaign.server.db.table.JobsTable
+import ru.zhma.campaign.server.db.table.MessagesTable
+import ru.zhma.campaign.server.db.table.PlacesTable
+import ru.zhma.campaign.server.db.table.SegmentsTable
+import ru.zhma.campaign.server.db.table.SessionsTable
+import ru.zhma.campaign.server.db.table.TagsTable
+import ru.zhma.campaign.server.db.table.TopicsTable
 import ru.zhma.campaign.server.http.ApiError
-import ru.zhma.campaign.server.http.AuditEntryDto
-import ru.zhma.campaign.server.http.BannerButtonJson
-import ru.zhma.campaign.server.http.BannerContentJson
-import ru.zhma.campaign.server.http.BannerDto
-import ru.zhma.campaign.server.http.BannerTypeDto
+import ru.zhma.campaign.server.http.ApiException
 import ru.zhma.campaign.server.http.Caller
-import ru.zhma.campaign.server.http.CampaignDetailsDto
-import ru.zhma.campaign.server.http.CampaignStateDto
-import ru.zhma.campaign.server.http.ChannelDto
-import ru.zhma.campaign.server.http.ContentDto
-import ru.zhma.campaign.server.http.CreativeDto
-import ru.zhma.campaign.server.http.MessageDto
-import ru.zhma.campaign.server.http.SegmentsDto
-import ru.zhma.campaign.server.http.WarningsResponse
+import ru.zhma.campaign.server.http.dto.AuditEntryDto
+import ru.zhma.campaign.server.http.dto.BannerButtonJson
+import ru.zhma.campaign.server.http.dto.BannerContentJson
+import ru.zhma.campaign.server.http.dto.BannerDto
+import ru.zhma.campaign.server.http.dto.BannerTypeDto
+import ru.zhma.campaign.server.http.dto.CampaignDetailsDto
+import ru.zhma.campaign.server.http.dto.CampaignStateDto
+import ru.zhma.campaign.server.http.dto.ChannelDto
+import ru.zhma.campaign.server.http.dto.ContentDto
+import ru.zhma.campaign.server.http.dto.CreativeDto
+import ru.zhma.campaign.server.http.dto.MessageDto
+import ru.zhma.campaign.server.http.dto.SegmentsDto
+import ru.zhma.campaign.server.http.dto.WarningsResponse
 import ru.zhma.campaign.server.http.bad
 import ru.zhma.campaign.server.http.notFound
 import ru.zhma.campaign.server.http.roleForbidden
@@ -272,7 +274,7 @@ fun moderate(id: Long, actor: String) {
         throw bad(ApiError("TO_MODERATION_NOT_ALLOWED", "Отправка на модерацию из состояния $state недоступна", "state"))
     }
     val checked = checkCampaign(storedInput(id), loadLiveCatalog())
-    if (checked.missing.isNotEmpty()) throw ru.zhma.campaign.server.http.ApiException(io.ktor.http.HttpStatusCode.NotFound, checked.missing)
+    if (checked.missing.isNotEmpty()) throw ApiException(HttpStatusCode.NotFound, checked.missing)
     if (checked.errors.isNotEmpty()) throw bad(checked.errors)
     CampaignsTable.update({ CampaignsTable.id eq id }) {
         it[CampaignsTable.state] = "ON_MODERATION"
@@ -445,7 +447,7 @@ private fun saveCampaign(draft: DraftCampaign, actor: String): DraftCampaign {
         existingNames = cachedNames,
     )
     val checked = checkCampaign(input, catalog)
-    if (checked.missing.isNotEmpty()) throw ru.zhma.campaign.server.http.ApiException(io.ktor.http.HttpStatusCode.NotFound, checked.missing)
+    if (checked.missing.isNotEmpty()) throw ApiException(HttpStatusCode.NotFound, checked.missing)
     if (checked.errors.isNotEmpty()) throw bad(checked.errors)
     val weight = draft.weight ?: 0.0
     val ctr = draft.initialCtr ?: 15.0
