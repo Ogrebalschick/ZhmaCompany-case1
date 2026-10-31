@@ -9,7 +9,7 @@
 .enter,
 .thread,
 .railSlot {
-  animation: rise-in 480ms ease both;
+  animation: rise-in 480ms ease backwards;
 }
 
 .thread,
