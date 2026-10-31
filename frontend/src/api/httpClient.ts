@@ -1,9 +1,11 @@
 import { errorText } from "./errors";
 import { requestHeaders } from "./headers";
-import { normalizeMessage, normalizeReply } from "./guards";
+import { asCampaignItem, normalizeMessage, normalizeReply } from "./guards";
 import type { ChatClient } from "./client";
 import type {
+  CampaignListItem,
   ChatMessage,
+  DraftCampaign,
   JobStatus,
   JobView,
   RequestContext,
@@ -61,6 +63,38 @@ export class HttpChatClient implements ChatClient {
     }
     return { jobId: (body as { jobId: string }).jobId };
   }
+
+  async listCampaigns(ctx: RequestContext): Promise<CampaignListItem[]> {
+    const body = await this.request(ctx, `${API}/campaigns`);
+    if (!Array.isArray(body)) throw new Error("Сервер вернул список кампаний в неожиданном виде.");
+    return body.flatMap((item) => {
+      const row = asCampaignItem(item);
+      return row ? [row] : [];
+    });
+  }
+
+  async openCampaign(ctx: RequestContext, id: number): Promise<ChatMessage[]> {
+    const items = await this.listCampaigns(ctx);
+    const item = items.find((row) => row.id === id);
+    if (!item) return [{ role: "assistant", text: "Такой кампании нет в списке." }];
+    const draft: DraftCampaign = {
+      name: item.name,
+      marketingName: item.name,
+      startDate: item.startDate,
+      endDate: item.endDate ?? null,
+      topic: item.topic ?? null,
+      savedCampaignId: item.id,
+    };
+    return [
+      {
+        role: "assistant",
+        text: `Кампания «${item.name}». Отдельной переписки нет: сессия одна и не привязана к кампании.`,
+        blocks: [{ type: "campaign_draft", draft, missing: [], readyToSave: false }],
+      },
+    ];
+  }
+
+  async closeCampaign(): Promise<void> {}
 
   async getJob(ctx: RequestContext, jobId: string): Promise<JobView> {
     const body = await this.request(ctx, `${API}/jobs/${encodeURIComponent(jobId)}`);

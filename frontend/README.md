@@ -2,7 +2,7 @@
 
 Один экран: шапка с ролью, лента ответов ассистента, поле ввода и боковой черновик. Промпты и автомат живут в `backend/`.
 
-Обновлено: ветка включает сервер из `main`. В разработке мок выключен, локальные ответы включаются через `.env.development.local`.
+Обновлено: список кампаний открывается слева стрелкой или полоской. Выбор кампании показывает её переписку и таблицу справа.
 
 Статус: `npm run dev` в этой папке открывает `http://localhost:5173` и ходит в `http://localhost:8080`. Сервер должен быть запущен. Чтобы обойтись без него, в `.env.development.local` поставьте `VITE_USE_MOCK=true`.
 
@@ -43,7 +43,7 @@ VITE_USE_MOCK=true
 - `quick_replies` — `options: string[]`. Клик шлёт строку как есть. Если это код сегмента, темы или id места, на кнопке подпись из справочника, например «Возраст 46–60 (AGE_46_60)», а уходит `AGE_46_60`. Незнакомая строка пишется на кнопке целиком. Над полем только кнопки последнего ответа. Пока job в `PENDING`, они заблокированы.
 - `entity_proposal` — `proposal: { kind, name, code, description }`. `TAG` — «Создать тег», `PLACE` — «Создать место». Кнопки шлют `подтверждаю` и `отмена`.
 - `creative_preview` — `banner`. `STORY` узкая рамка, иначе широкая. Текст рисует вёрстка, не картинка.
-- `campaign_list` — `items` с именем, `state`, датами и отдельным признаком `published`.
+- `campaign_list` — `items` с именем, `state`, датами и отдельным признаком `published`. Экран этот блок в ленте больше не ждёт: тот же список висит в левой панели.
 - `warnings` — жёлтые строки, ввод не блокируют.
 - любой другой `type` — компонент ничего не рисует, текст сообщения остаётся.
 
@@ -81,7 +81,7 @@ VITE_USE_MOCK=true
 - ровно `отмена` — текст, что предложение снято, черновик без изменений
 - `ошибка` — на втором опросе `FAILED`
 - `предупреж` — жёлтая плашка
-- `список` или `покажи кампании` — две строки списка
+- `список` или `покажи кампании` — текст «Кампании открываются слева», без блока в ленте. Слева те же две кампании: 201 «Вклад для Москвы» и 318 «Премиальная карта». Выбор 201 открывает черновик вклада и его первую реплику, дальше диалог вклада продолжается. Выбор 318 — одна реплика, что показ включён, и таблица только с именем, темой и датами. «Новая кампания» возвращает ленту сессии. Живой клиент берёт строки из `GET /api/campaigns` и по выбору пишет одну фразу: отдельной переписки у сервера нет
 - `тег` — предложение тега
 - `место` вместе с `созда` или `нов` — предложение места
 - `вариант` — быстрые ответы
@@ -115,7 +115,8 @@ VITE_USE_MOCK=true
 - `frontend/src/labels/states.ts` — ярлык того же `state` и отдельно `published`
 - `frontend/src/labels/catalog.ts` — имена сегментов, мест, тегов и подпись кнопки `replyLabel`
 - `frontend/src/components/layout/AppShell.tsx` — колонки, стартовая ширина черновика 460px и ручка изменения ширины
-- `frontend/src/components/layout/HeaderBar.tsx` — пользователь и сессия
+- `frontend/src/components/layout/CampaignDrawer.tsx` — левая панель кампаний, затемнение и полоска
+- `frontend/src/components/layout/HeaderBar.tsx` — стрелка «Кампании», пользователь и сессия
 - `frontend/src/components/layout/RoleSelect.tsx` — две роли
 - `frontend/src/components/thread/MessageList.tsx` — прокрутка ленты
 - `frontend/src/components/thread/EmptyThread.tsx` — пустая лента: сначала свой бриф (`starter-own-brief`), ниже бриф про вклад (`starter-brief`)
@@ -154,6 +155,7 @@ VITE_USE_MOCK=true
 - Превью баннера: `frontend/src/components/blocks/CreativePreview.tsx`, `frontend/src/components/blocks/StoryFrame.tsx`, `frontend/src/components/blocks/SmartBannerFrame.tsx`
 - Быстрые ответы: `frontend/src/components/blocks/QuickReplies.tsx`, `frontend/src/labels/catalog.ts`, `frontend/src/components/composer/QuickReplyBar.tsx`, `frontend/src/chat/selectors.ts`
 - Цвета и страница: `frontend/src/styles/global.css`, `frontend/src/components/layout/AppShell.tsx`
+- Список кампаний слева: `frontend/src/components/layout/CampaignDrawer.tsx`, `frontend/src/components/layout/HeaderBar.tsx`, `frontend/src/chat/useChat.ts`, `frontend/src/api/client.ts`
 - Сборка экрана: `frontend/src/App.tsx`
 
 ## Стыковка с агентом, сервером и LLM
@@ -173,3 +175,5 @@ VITE_USE_MOCK=true
 **LLM.** В схеме `intent` даты вида «на 2 недели», «с завтра» и «до конца года» остаются null: их посчитает код. Вес и CTR остаются null, если во фразе нет цифры или согласия на уже названное число. Модель не ставит 0 и 15 за менеджера.
 
 **Сервер.** `today` в `TurnInput` — текущая дата UTC `YYYY-MM-DD`. При `SAVE_CAMPAIGN` null-вес становится 0, null-CTR становится 15. В аудит пишется уже это сохранённое значение, чтобы было видно, что число пришло от сервера. До сохранения в ответе клиенту вес и CTR остаются null, фронт показывает прочерк и подпись. После `SAVE_CAMPAIGN` агент ставит `readyToSave: false`. Следующее «подтверждаю» не становится вторым сохранением и не присылает новый блок `campaign_draft`.
+
+Левая панель — часть экрана. Новый `type` для неё не нужен: строки те же, что у `GET /api/campaigns`. Чат выбранной кампании появится, когда сессия получит id кампании. Пока сессия одна, живой клиент по клику показывает только поля строки.

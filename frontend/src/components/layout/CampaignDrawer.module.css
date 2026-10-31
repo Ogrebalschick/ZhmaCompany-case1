@@ -1,0 +1,152 @@
+.layer {
+  --reveal: 0px;
+}
+
+.scrim,
+.drawer,
+.handle {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+}
+
+.scrim {
+  z-index: 20;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(26, 35, 50, 0.45);
+  opacity: calc(var(--reveal) / 320px);
+  transition: opacity 240ms ease;
+  pointer-events: none;
+  cursor: default;
+}
+
+.scrim[data-open="yes"] {
+  pointer-events: auto;
+}
+
+.scrim[data-dragging="yes"] {
+  transition: none;
+}
+
+.drawer {
+  z-index: 30;
+  left: 0;
+  width: 320px;
+  padding: 24px 16px 24px;
+  overflow: auto;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  transform: translateX(calc(var(--reveal) - 320px));
+  transition: transform 240ms ease;
+}
+
+.drawer[data-dragging="yes"] {
+  transition: none;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  margin: 0 0 28px;
+  padding-left: 54px;
+}
+
+.drawer h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.drawer ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.newCampaign {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 240ms ease,
+    border-color 240ms ease;
+}
+
+.plus {
+  position: relative;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--accent);
+  transform-origin: center;
+  transition: transform 240ms ease;
+}
+
+.plus::before,
+.plus::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: #fff;
+  border-radius: 1px;
+  transform: translate(-50%, -50%);
+}
+
+.plus::before {
+  width: 10px;
+  height: 2px;
+}
+
+.plus::after {
+  width: 2px;
+  height: 10px;
+}
+
+.newCampaign:hover,
+.newCampaign:focus-visible {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.newCampaign:hover .plus,
+.newCampaign:focus-visible .plus {
+  transform: rotate(90deg);
+}
+
+.handle {
+  z-index: 35;
+  left: var(--reveal);
+  width: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: col-resize;
+}
+
+.handle:hover,
+.handle:focus-visible {
+  background: var(--accent);
+}
+
+.empty {
+  margin: 12px 0 0;
+  color: var(--muted);
+}

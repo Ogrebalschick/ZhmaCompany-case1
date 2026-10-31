@@ -9,6 +9,63 @@
   box-shadow: inset 0 3px 0 var(--accent);
 }
 
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.menu {
+  position: relative;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.chevronWrap {
+  display: grid;
+  width: 12px;
+  height: 12px;
+  place-items: center;
+}
+
+.chevron {
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  transform: rotate(-45deg);
+  transition: transform 240ms ease;
+}
+
+.chevron[data-open="yes"] {
+  transform: rotate(135deg);
+}
+
+.menu:hover .chevronWrap[data-open="yes"],
+.menu:focus-visible .chevronWrap[data-open="yes"] {
+  animation: nudge-left 420ms ease;
+}
+
+@keyframes nudge-left {
+  0% {
+    transform: translateX(0);
+  }
+  40% {
+    transform: translateX(-4px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
 .product {
   margin: 0;
   font-size: 18px;

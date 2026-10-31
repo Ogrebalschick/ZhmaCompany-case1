@@ -8,6 +8,8 @@ export function HeaderBar({
   sessionId,
   booting,
   mock,
+  campaignsOpen,
+  onToggleCampaigns,
   onRoleChange,
 }: {
   user: string;
@@ -15,6 +17,8 @@ export function HeaderBar({
   sessionId: string | null;
   booting: boolean;
   mock: boolean;
+  campaignsOpen: boolean;
+  onToggleCampaigns: () => void;
   onRoleChange: (role: Role) => void;
 }) {
   const sessionLabel = sessionId
@@ -24,11 +28,25 @@ export function HeaderBar({
       : "Сессия не создана";
   return (
     <header className={styles.bar}>
-      <div>
-        <p className={styles.product}>Сборка кампании</p>
-        <p className={styles.session} data-testid="session-id">
-          {sessionLabel}
-        </p>
+      <div className={styles.brand}>
+        <button
+          type="button"
+          className={styles.menu}
+          aria-label="Кампании"
+          aria-expanded={campaignsOpen}
+          data-testid="campaign-menu"
+          onClick={onToggleCampaigns}
+        >
+          <span className={styles.chevronWrap} data-open={campaignsOpen ? "yes" : "no"}>
+            <span className={styles.chevron} data-open={campaignsOpen ? "yes" : "no"} />
+          </span>
+        </button>
+        <div>
+          <p className={styles.product}>Сборка кампании</p>
+          <p className={styles.session} data-testid="session-id">
+            {sessionLabel}
+          </p>
+        </div>
       </div>
       <div className={styles.actor}>
         {mock ? <span className={styles.badge}>Локальные ответы</span> : null}

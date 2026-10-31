@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChatClient } from "../api/client";
 import { errorText } from "../api/errors";
 import { normalizeReply } from "../api/guards";
-import type { ChatMessage, IncomingBlock, JobView, Role } from "../api/types";
+import type { CampaignListItem, ChatMessage, IncomingBlock, JobView, Role } from "../api/types";
 import { USER_LOGIN } from "./phrases";
 import { latestDraftBlock, latestQuickReplies } from "./selectors";
 
@@ -21,12 +21,15 @@ export function useChat(client: ChatClient) {
   const [role, setRole] = useState<Role>("campaignManager");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [campaigns, setCampaigns] = useState<CampaignListItem[]>([]);
+  const [campaignMessages, setCampaignMessages] = useState<ChatMessage[] | null>(null);
   const [pending, setPending] = useState(false);
   const [booting, setBooting] = useState(true);
   const roleRef = useRef(role);
   const sessionRef = useRef(sessionId);
   const request = useRef(0);
   const sending = useRef(false);
+  const viewing = useRef(false);
 
   const context = useCallback(() => ({ user: USER_LOGIN, role: roleRef.current }), []);
 
@@ -45,6 +48,12 @@ export function useChat(client: ChatClient) {
         const history = await client.getMessages(context(), created.sessionId);
         if (cancelled) return;
         setMessages(history);
+        try {
+          const list = await client.listCampaigns(context());
+          if (!cancelled) setCampaigns(list);
+        } catch {
+          if (!cancelled) setCampaigns([]);
+        }
       } catch (error) {
         if (cancelled) return;
         setMessages([{ role: "assistant", text: errorText(error) }]);
@@ -58,9 +67,20 @@ export function useChat(client: ChatClient) {
     };
   }, [client, context]);
 
-  const pushAssistant = useCallback((text: string, blocks?: IncomingBlock[]) => {
-    setMessages((prev) => [...prev, { role: "assistant", text, blocks }]);
+  const append = useCallback((message: ChatMessage) => {
+    if (viewing.current) {
+      setCampaignMessages((prev) => [...(prev ?? []), message]);
+      return;
+    }
+    setMessages((prev) => [...prev, message]);
   }, []);
+
+  const pushAssistant = useCallback(
+    (text: string, blocks?: IncomingBlock[]) => {
+      append({ role: "assistant", text, blocks });
+    },
+    [append],
+  );
 
   const waitForJob = useCallback(
     async (jobId: string, requestId: number): Promise<JobView> => {
@@ -82,7 +102,7 @@ export function useChat(client: ChatClient) {
       if (!trimmed || sending.current || !session) return false;
       sending.current = true;
       setPending(true);
-      setMessages((prev) => [...prev, { role: "user", text: trimmed }]);
+      append({ role: "user", text: trimmed });
       const requestId = ++request.current;
       void (async () => {
         try {
@@ -112,22 +132,57 @@ export function useChat(client: ChatClient) {
       })();
       return true;
     },
-    [client, context, pushAssistant, waitForJob],
+    [append, client, context, pushAssistant, waitForJob],
   );
 
-  const draftBlock = useMemo(() => latestDraftBlock(messages), [messages]);
-  const quickReplies = useMemo(() => latestQuickReplies(messages), [messages]);
+  const stopRequest = useCallback(() => {
+    request.current += 1;
+    sending.current = false;
+    setPending(false);
+  }, []);
+
+  const openCampaign = useCallback(
+    (id: number) => {
+      stopRequest();
+      viewing.current = true;
+      void (async () => {
+        try {
+          const next = await client.openCampaign(context(), id);
+          if (!viewing.current) return;
+          setCampaignMessages(next);
+        } catch (error) {
+          if (!viewing.current) return;
+          setCampaignMessages([{ role: "assistant", text: errorText(error) }]);
+        }
+      })();
+    },
+    [client, context, stopRequest],
+  );
+
+  const closeCampaign = useCallback(() => {
+    stopRequest();
+    viewing.current = false;
+    setCampaignMessages(null);
+    void client.closeCampaign();
+  }, [client, stopRequest]);
+
+  const shown = campaignMessages ?? messages;
+  const draftBlock = useMemo(() => latestDraftBlock(shown), [shown]);
+  const quickReplies = useMemo(() => latestQuickReplies(shown), [shown]);
 
   return {
     user: USER_LOGIN,
     role,
     setRole,
     sessionId,
-    messages,
+    messages: shown,
+    campaigns,
     pending,
     booting,
     draftBlock,
     quickReplies,
     send,
+    openCampaign,
+    closeCampaign,
   };
 }

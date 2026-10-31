@@ -1,6 +1,7 @@
 import type {
   AssistantReply,
   BannerDraft,
+  CampaignListItem,
   DraftCampaign,
   DraftChoices,
   EntityProposal,
@@ -188,6 +189,51 @@ export function savedDraft(): DraftCampaign {
   return { ...readyDraft(), savedCampaignId: 201 };
 }
 
+export function premiumCardDraft(): DraftCampaign {
+  return {
+    name: "Премиальная карта",
+    marketingName: "Премиальная карта",
+    startDate: "2026-10-01",
+    startTime: null,
+    endDate: null,
+    endTime: null,
+    topic: "SALES",
+    tagIds: [],
+    keywords: null,
+    audienceType: null,
+    includedSegments: [],
+    excludedSegments: [],
+    placeIds: [],
+    weight: null,
+    initialCtr: null,
+    creativeBrief: null,
+    banner: null,
+    pendingProposal: null,
+    savedCampaignId: 318,
+  };
+}
+
+export const CAMPAIGN_ROWS: CampaignListItem[] = [
+  {
+    id: 201,
+    name: "Вклад для Москвы",
+    state: "DRAFT",
+    published: false,
+    topic: "SALES",
+    startDate: "2026-11-05",
+    endDate: "2026-12-31",
+  },
+  {
+    id: 318,
+    name: "Премиальная карта",
+    state: "ACTIVE",
+    published: true,
+    topic: "SALES",
+    startDate: "2026-10-01",
+    endDate: null,
+  },
+];
+
 const SEGMENT_FACTS: Record<string, { type: string; count: number; state: string }> = {
   FEMALE: { type: "GENDER", count: 42_000_000, state: "ACTIVE" },
   CITY_MSK: { type: "GEO_CITY", count: 13_000_000, state: "ACTIVE" },
@@ -278,34 +324,7 @@ export function placeProposal(): EntityProposal {
 }
 
 export function campaignListReply(): AssistantReply {
-  return {
-    text: "Вот кампании, которые уже есть.",
-    blocks: [
-      {
-        type: "campaign_list",
-        items: [
-          {
-            id: 201,
-            name: "Вклад для Москвы",
-            state: "DRAFT",
-            published: false,
-            topic: "SALES",
-            startDate: "2026-11-05",
-            endDate: "2026-12-31",
-          },
-          {
-            id: 318,
-            name: "Премиальная карта",
-            state: "ACTIVE",
-            published: true,
-            topic: "SALES",
-            startDate: "2026-10-01",
-            endDate: null,
-          },
-        ],
-      },
-    ],
-  };
+  return { text: "Кампании открываются слева.", blocks: [] };
 }
 
 export function warningsReply(): AssistantReply {

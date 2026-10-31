@@ -1,6 +1,7 @@
 import type { ChatClient } from "../api/client";
 import type {
   AssistantReply,
+  CampaignListItem,
   ChatMessage,
   DraftCampaign,
   IncomingBlock,
@@ -18,6 +19,7 @@ import {
   WEIGHT_OFFER,
   ageCodeFromText,
   applyServerMetrics,
+  CAMPAIGN_ROWS,
   campaignListReply,
   CITY_MSK_REASON,
   FEMALE_REASON,
@@ -30,6 +32,7 @@ import {
   isOwnBrief,
   ownBriefDraft,
   ownMissing,
+  premiumCardDraft,
   ctrFromText,
   isWideReach,
   placeProposal,
@@ -46,7 +49,13 @@ import {
 } from "./fixtures";
 
 type Phase = "empty" | "incomplete" | "ready" | "saved";
-type DraftKind = "none" | "deposit" | "own";
+type DraftKind = "none" | "deposit" | "own" | "card";
+
+interface DraftSnapshot {
+  phase: Phase;
+  kind: DraftKind;
+  draft: DraftCampaign;
+}
 
 interface MockJob {
   seen: number;
@@ -60,6 +69,7 @@ export class MockChatClient implements ChatClient {
   private draft: DraftCampaign = {};
   private jobs = new Map<string, MockJob>();
   private seq = 0;
+  private snapshot: DraftSnapshot | null = null;
 
   async createSession(_ctx: RequestContext) {
     return { sessionId: MOCK_SESSION_ID };
@@ -78,6 +88,42 @@ export class MockChatClient implements ChatClient {
       error: failed ? "Не удалось разобрать реплику." : null,
     });
     return { jobId };
+  }
+
+  async listCampaigns(_ctx: RequestContext): Promise<CampaignListItem[]> {
+    return CAMPAIGN_ROWS;
+  }
+
+  async openCampaign(_ctx: RequestContext, id: number): Promise<ChatMessage[]> {
+    this.remember();
+    if (id === 201) {
+      this.kind = "deposit";
+      this.phase = "incomplete";
+      this.draft = incompleteDraft();
+      const reply = this.depositOpening();
+      return [{ role: "assistant", text: reply.text, blocks: reply.blocks }];
+    }
+    if (id === 318) {
+      this.kind = "card";
+      this.phase = "incomplete";
+      this.draft = premiumCardDraft();
+      return [
+        {
+          role: "assistant",
+          text: "Кампания «Премиальная карта» уже идёт, показ включён.",
+          blocks: this.draftBlocks([], false),
+        },
+      ];
+    }
+    return [{ role: "assistant", text: "Такой кампании нет в списке." }];
+  }
+
+  async closeCampaign(): Promise<void> {
+    if (!this.snapshot) return;
+    this.phase = this.snapshot.phase;
+    this.kind = this.snapshot.kind;
+    this.draft = this.snapshot.draft;
+    this.snapshot = null;
   }
 
   async getJob(_ctx: RequestContext, jobId: string): Promise<JobView> {
@@ -103,10 +149,7 @@ export class MockChatClient implements ChatClient {
       this.kind = "deposit";
       this.phase = "incomplete";
       this.draft = incompleteDraft();
-      return {
-        text: `Собрал черновик кампании по вкладу для Москвы. ${CITY_MSK_REASON}. ${PLACE_MAIN_REASON}. Осталось уточнить время начала. Отправьте «подтверждаю», чтобы поставить 10:00 и открыть сохранение.`,
-        blocks: this.draftBlocks(["startTime"], false),
-      };
+      return this.depositOpening();
     }
     if (this.kind === "own") {
       const followUp = this.applyOwnDetails(text);
@@ -159,6 +202,12 @@ export class MockChatClient implements ChatClient {
   }
 
   private confirm(): AssistantReply {
+    if (this.kind === "card") {
+      return {
+        text: "Эта кампания уже сохранена. Новая собирается пунктом «Новая кампания» слева.",
+        blocks: this.draftBlocks([], false),
+      };
+    }
     if (this.phase === "saved") {
       return {
         text: "Кампания уже сохранена. Идентификатор 201.",
@@ -288,6 +337,28 @@ export class MockChatClient implements ChatClient {
     return {
       text: "Предложение снято. Черновик кампании остался как был.",
       blocks: this.phase === "empty" ? [] : this.draftBlocks(this.missing(), this.ready()),
+    };
+  }
+
+  private remember(): void {
+    if (this.snapshot) return;
+    this.snapshot = {
+      phase: this.phase,
+      kind: this.kind,
+      draft: {
+        ...this.draft,
+        tagIds: [...(this.draft.tagIds ?? [])],
+        includedSegments: [...(this.draft.includedSegments ?? [])],
+        excludedSegments: [...(this.draft.excludedSegments ?? [])],
+        placeIds: [...(this.draft.placeIds ?? [])],
+      },
+    };
+  }
+
+  private depositOpening(): AssistantReply {
+    return {
+      text: `Собрал черновик кампании по вкладу для Москвы. ${CITY_MSK_REASON}. ${PLACE_MAIN_REASON}. Осталось уточнить время начала. Отправьте «подтверждаю», чтобы поставить 10:00 и открыть сохранение.`,
+      blocks: this.draftBlocks(["startTime"], false),
     };
   }
 

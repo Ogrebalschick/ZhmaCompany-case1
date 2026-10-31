@@ -2,11 +2,17 @@ import type { CampaignListItem } from "../../api/types";
 import { publishedLabel, stateHint } from "../../labels/states";
 import styles from "./CampaignListRow.module.css";
 
-export function CampaignListRow({ item }: { item: CampaignListItem }) {
+export function CampaignListRow({
+  item,
+  onSelect,
+}: {
+  item: CampaignListItem;
+  onSelect?: () => void;
+}) {
   const hint = stateHint(item.state);
   const dates = item.endDate ? `${item.startDate} — ${item.endDate}` : item.startDate;
-  return (
-    <li className={styles.row}>
+  const body = (
+    <>
       <div>
         <strong>{item.name}</strong>
         <span className={styles.dates}>{dates}</span>
@@ -20,6 +26,19 @@ export function CampaignListRow({ item }: { item: CampaignListItem }) {
           {publishedLabel(item.published)}
         </span>
       </div>
+    </>
+  );
+  if (!onSelect) return <li className={styles.row}>{body}</li>;
+  return (
+    <li>
+      <button
+        type="button"
+        className={`${styles.row} ${styles.pick}`}
+        data-testid={`campaign-${item.id}`}
+        onClick={onSelect}
+      >
+        {body}
+      </button>
     </li>
   );
 }

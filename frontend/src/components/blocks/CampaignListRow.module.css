@@ -6,6 +6,19 @@
   border-radius: 14px;
 }
 
+.pick {
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.pick:hover,
+.pick:focus-visible {
+  border-color: var(--accent);
+}
+
 .row strong,
 .dates {
   display: block;
