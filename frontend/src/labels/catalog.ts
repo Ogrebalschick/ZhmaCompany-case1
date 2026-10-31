@@ -1,3 +1,9 @@
+const TOPICS: Record<string, string> = {
+  LIFESTYLE: "Образ жизни",
+  EVENT: "Событие",
+  SALES: "Продажи",
+};
+
 const TAGS: Record<number, string> = {
   1: "Банковские продукты",
   2: "Промо",
@@ -60,6 +66,21 @@ const PLACES: Record<number, { code: string; description: string; inactive: bool
   7: { code: "depositScreenPromo", description: "Промо на экране вкладов", inactive: false },
   8: { code: "oldCatalogSlot", description: "Слот каталога до редизайна", inactive: true },
 };
+
+export function topicLabel(code: string): string {
+  const name = TOPICS[code];
+  return name ? `${name} (${code})` : code;
+}
+
+export function replyLabel(option: string): string {
+  if (SEGMENTS[option]) return segmentLabel(option);
+  if (TOPICS[option]) return topicLabel(option);
+  if (/^\d+$/.test(option)) {
+    const placeId = Number(option);
+    if (PLACES[placeId]) return placeLabel(placeId);
+  }
+  return option;
+}
 
 export function segmentLabel(code: string): string {
   const name = SEGMENTS[code];

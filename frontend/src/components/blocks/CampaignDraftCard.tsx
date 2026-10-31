@@ -1,5 +1,5 @@
 import type { CampaignDraftBlock } from "../../api/types";
-import { formatPlaces, formatSegments, formatTags } from "../../labels/catalog";
+import { formatPlaces, formatSegments, formatTags, topicLabel } from "../../labels/catalog";
 import { audienceLabel, formatCampaignId, formatMetric, formatSchedule, orDash } from "../../labels/fields";
 import controls from "../../styles/controls.module.css";
 import { DraftField } from "./DraftField";
@@ -34,7 +34,7 @@ export function CampaignDraftCard({
         <DraftField label="Маркетинговое имя" value={orDash(draft.marketingName)} />
         <DraftField label="Начало" value={formatSchedule(draft.startDate, draft.startTime)} />
         <DraftField label="Окончание" value={formatSchedule(draft.endDate, draft.endTime)} />
-        <DraftField label="Тема" value={orDash(draft.topic)} />
+        <DraftField label="Тема" value={draft.topic ? topicLabel(draft.topic) : "—"} />
         <DraftField label="Аудитория" value={audienceLabel(draft.audienceType)} />
         <DraftField label="Сегменты включения" value={formatSegments(draft.includedSegments)} />
         <DraftField label="Сегменты исключения" value={formatSegments(draft.excludedSegments)} />

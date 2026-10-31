@@ -2,10 +2,10 @@ import type { AssistantReply, BannerDraft, DraftCampaign, EntityProposal, Incomi
 
 export const MOCK_SESSION_ID = "mock-session";
 
-export const AGE_46_REPLY = "Возраст 46–60";
-export const AGE_26_REPLY = "Возраст 26–45";
-export const TOPIC_LIFESTYLE_REPLY = "Образ жизни";
-export const TOPIC_EVENT_REPLY = "Событие";
+export const AGE_46_REPLY = "AGE_46_60";
+export const AGE_26_REPLY = "AGE_26_45";
+export const TOPIC_LIFESTYLE_REPLY = "LIFESTYLE";
+export const TOPIC_EVENT_REPLY = "EVENT";
 
 export function isDepositMoscowBrief(text: string): boolean {
   return text.includes("вклад") && text.includes("москв");
@@ -44,10 +44,10 @@ export function ownBriefDraft(): DraftCampaign {
 export function ownMissing(draft: DraftCampaign): string[] {
   const segments = draft.includedSegments ?? [];
   const missing: string[] = [];
-  if (!segments.includes("AGE_26_45") && !segments.includes("AGE_46_60")) missing.push("segments");
-  if (!draft.topic) missing.push("topic");
   if (!draft.startDate) missing.push("startDate");
   if (!draft.startTime) missing.push("startTime");
+  if (!draft.topic) missing.push("topic");
+  if (!segments.includes("AGE_26_45") && !segments.includes("AGE_46_60")) missing.push("segments");
   return missing;
 }
 

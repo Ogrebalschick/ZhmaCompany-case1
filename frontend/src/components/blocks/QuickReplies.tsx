@@ -1,3 +1,4 @@
+import { replyLabel } from "../../labels/catalog";
 import controls from "../../styles/controls.module.css";
 import styles from "./QuickReplies.module.css";
 
@@ -21,7 +22,7 @@ export function QuickReplies({
           disabled={disabled}
           onClick={() => onSend(option)}
         >
-          {option}
+          {replyLabel(option)}
         </button>
       ))}
     </div>

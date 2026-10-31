@@ -179,11 +179,10 @@ export class MockChatClient implements ChatClient {
       segments = segments.filter((code) => code !== "AGE_26_45" && code !== "AGE_46_60");
       segments.push(age);
     }
-    const aged = segments.includes("AGE_26_45") || segments.includes("AGE_46_60");
     this.draft = {
       ...this.draft,
       includedSegments: segments,
-      topic: aged && topic ? topic : this.draft.topic,
+      topic: topic ?? this.draft.topic,
       startDate: date ? date[0] : this.draft.startDate,
       startTime: time ? time[1] : this.draft.startTime,
     };
@@ -192,25 +191,31 @@ export class MockChatClient implements ChatClient {
   }
 
   private ownReply(): AssistantReply {
-    const missing = ownMissing(this.draft);
-    const blocks: AssistantReply["blocks"] = [draftBlock(this.draft, missing, false)];
-    if (missing.includes("segments")) {
-      blocks.push({ type: "quick_replies", options: [AGE_46_REPLY, AGE_26_REPLY] });
+    const current = ownMissing(this.draft)[0];
+    const blocks: AssistantReply["blocks"] = [draftBlock(this.draft, current ? [current] : [], false)];
+    if (current === "startDate") {
       return {
-        text: "Собрал черновик «Баня и аквапарк» для женщин в Москве, место показа — промо на главном. Возраст «старше 35» лежит между сегментами 26–45 и 46–60, поэтому код не выбираю. Темы «аквапарк» в справочнике нет, дату и время тоже не подставляю.",
+        text: "Собрал черновик «Баня и аквапарк» для женщин в Москве, место показа — промо на главном. Напишите дату начала в виде ГГГГ-ММ-ДД. Сам её не поставлю.",
         blocks,
       };
     }
-    if (missing.includes("topic")) {
+    if (current === "startTime") {
+      return {
+        text: "Дата записана. Напишите время начала в виде ЧЧ:ММ. Сам его не поставлю.",
+        blocks,
+      };
+    }
+    if (current === "topic") {
       blocks.push({ type: "quick_replies", options: [TOPIC_LIFESTYLE_REPLY, TOPIC_EVENT_REPLY] });
       return {
-        text: "Возраст записан. Темы «аквапарк» в справочнике нет. Подойдёт образ жизни или событие?",
+        text: "Темы «аквапарк» в справочнике нет. Подойдёт образ жизни или событие?",
         blocks,
       };
     }
-    if (missing.includes("startDate") || missing.includes("startTime")) {
+    if (current === "segments") {
+      blocks.push({ type: "quick_replies", options: [AGE_26_REPLY, AGE_46_REPLY] });
       return {
-        text: "Тема записана. Напишите дату начала в виде ГГГГ-ММ-ДД и время ЧЧ:ММ. Сам их не поставлю.",
+        text: "Возраст «старше 35» лежит между двумя активными сегментами, поэтому код не выбираю. Возраст 26–45, тип AGE, 24 000 000 клиентов. Возраст 46–60, тип AGE, 18 000 000 клиентов.",
         blocks,
       };
     }
@@ -229,7 +234,10 @@ export class MockChatClient implements ChatClient {
 
   private missing(): string[] {
     if (this.phase !== "incomplete") return [];
-    if (this.kind === "own") return ownMissing(this.draft);
+    if (this.kind === "own") {
+      const current = ownMissing(this.draft)[0];
+      return current ? [current] : [];
+    }
     return ["startTime"];
   }
 
