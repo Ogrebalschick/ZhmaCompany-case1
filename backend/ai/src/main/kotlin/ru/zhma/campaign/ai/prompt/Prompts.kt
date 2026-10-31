@@ -1,8 +1,12 @@
 ﻿package ru.zhma.campaign.ai.prompt
 
 object Prompts {
-
-    fun intent(today: String, catalog: String, draftJson: String): String = """
+    fun intent(
+        today: String,
+        catalog: String,
+        draftJson: String,
+    ): String =
+        """
 Ты — разбор намерения пользователя для кампании.
 
 Сегодня: 
@@ -22,9 +26,13 @@ object Prompts {
 - Даты вида «на 2 недели», «до конца года» не рассчитывай — оставь null, автомат посчитает.
 - Не выдумывай weight, initialCtr, startTime, name, если их явно не назвали.
 - confirm: true только если реплика ровно «подтверждаю», «сохрани» или «да».
-""".trimIndent()
+        """.trimIndent()
 
-    fun askMissing(missing: String, options: String): String = """
+    fun askMissing(
+        missing: String,
+        options: String,
+    ): String =
+        """
 Спроси пользователя про недостающие поля кампании.
 
 Недостающие поля: 
@@ -35,9 +43,15 @@ object Prompts {
 - Спроси только про перечисленные поля.
 - Если варианты переданы — перечисли их.
 - Без эмодзи, без новых вопросов.
-""".trimIndent()
+        """.trimIndent()
 
-    fun bannerCopy(product: String, audience: String, placement: String, n: Int): String = """
+    fun bannerCopy(
+        product: String,
+        audience: String,
+        placement: String,
+        n: Int,
+    ): String =
+        """
 Сгенерируй рекламный копирайт.
 
 Продукт: 
@@ -58,5 +72,5 @@ object Prompts {
 - «лучший на рынке», «топ»
 - проценты и суммы, которых нет во входе
 - ЗАГЛАВНЫЕ БУКВЫ и восклицательные знаки
-""".trimIndent()
+        """.trimIndent()
 }

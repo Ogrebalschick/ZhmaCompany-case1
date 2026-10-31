@@ -5,10 +5,16 @@ import java.util.zip.CRC32
 import java.util.zip.Deflater
 
 class PlaceholderImageGen : ImageGenClient {
+    override suspend fun generate(
+        prompt: String,
+        w: Int,
+        h: Int,
+    ): ByteArray = solidPng(w, h)
 
-    override suspend fun generate(prompt: String, w: Int, h: Int): ByteArray = solidPng(w, h)
-
-    private fun solidPng(w: Int, h: Int): ByteArray {
+    private fun solidPng(
+        w: Int,
+        h: Int,
+    ): ByteArray {
         val cw = w.coerceAtLeast(1)
         val ch = h.coerceAtLeast(1)
 
@@ -60,9 +66,17 @@ class PlaceholderImageGen : ImageGenClient {
         private const val PNG_R = 0x34
         private const val PNG_G = 0x56
         private const val PNG_B = 0x8B
-        private val PNG_SIGNATURE = byteArrayOf(
-            0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
-        )
+        private val PNG_SIGNATURE =
+            byteArrayOf(
+                0x89.toByte(),
+                0x50,
+                0x4E,
+                0x47,
+                0x0D,
+                0x0A,
+                0x1A,
+                0x0A,
+            )
     }
 }
 
@@ -73,7 +87,10 @@ private fun ByteArrayOutputStream.writeInt(v: Int) {
     write(v and 0xFF)
 }
 
-private fun ByteArrayOutputStream.writeChunk(type: String, data: ByteArray) {
+private fun ByteArrayOutputStream.writeChunk(
+    type: String,
+    data: ByteArray,
+) {
     writeInt(data.size)
     val typeBytes = type.toByteArray(Charsets.US_ASCII)
     write(typeBytes)

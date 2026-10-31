@@ -11,15 +11,22 @@ package ru.zhma.campaign.ai.llm
  * Если токен пустой — [chat] бросает понятное исключение, не подменяясь моком.
  * Промпты в клиент не вшиваются.
  */
-class GigaChatClient(private val token: String) : LlmClient {
+class GigaChatClient(
+    private val token: String,
+) : LlmClient {
+    private val delegate =
+        OpenAiCompatibleClient(
+            baseUrl = System.getenv("GIGACHAT_BASE_URL") ?: "https://gigachatai.ru/v1",
+            model = System.getenv("GIGACHAT_MODEL") ?: "gigachat-pro",
+            token = token,
+        )
 
-    private val delegate = OpenAiCompatibleClient(
-        baseUrl = System.getenv("GIGACHAT_BASE_URL") ?: "https://gigachatai.ru/v1",
-        model = System.getenv("GIGACHAT_MODEL") ?: "gigachat-pro",
-        token = token,
-    )
-
-    override suspend fun chat(system: String, user: String, temperature: Double, json: Boolean): String {
+    override suspend fun chat(
+        system: String,
+        user: String,
+        temperature: Double,
+        json: Boolean,
+    ): String {
         if (token.isBlank()) {
             throw IllegalStateException("GigaChat не настроен: GIGACHAT_TOKEN не задан")
         }

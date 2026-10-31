@@ -6,15 +6,15 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
-import kotlinx.serialization.json.addJsonObject
 import java.net.HttpURLConnection
-import java.net.URL
+import java.net.URI
 
 /**
  * Клиент для любого OpenAI-совместимого API (GigaChat, Ollama, LM Studio, llama.cpp, vLLM и т.д.).
@@ -29,23 +29,34 @@ class OpenAiCompatibleClient(
     val model: String = env("OPENAI_MODEL") ?: env("GIGACHAT_MODEL") ?: "gigachat-pro",
     val token: String? = env("OPENAI_API_KEY") ?: env("GIGACHAT_TOKEN"),
 ) : LlmClient {
-
-    override suspend fun chat(system: String, user: String, temperature: Double, json: Boolean): String =
+    override suspend fun chat(
+        system: String,
+        user: String,
+        temperature: Double,
+        json: Boolean,
+    ): String =
         withContext(Dispatchers.IO) {
-            val body = buildJsonObject {
-                put("model", model)
-                putJsonArray("messages") {
-                    addJsonObject { put("role", "system"); put("content", system) }
-                    addJsonObject { put("role", "user"); put("content", user) }
-                }
-                put("temperature", temperature)
-                if (json) {
-                    putJsonObject("response_format") { put("type", "json_object") }
-                }
-            }.toString()
+            val body =
+                buildJsonObject {
+                    put("model", model)
+                    putJsonArray("messages") {
+                        addJsonObject {
+                            put("role", "system")
+                            put("content", system)
+                        }
+                        addJsonObject {
+                            put("role", "user")
+                            put("content", user)
+                        }
+                    }
+                    put("temperature", temperature)
+                    if (json) {
+                        putJsonObject("response_format") { put("type", "json_object") }
+                    }
+                }.toString()
 
             val endpoint = baseUrl.trimEnd('/') + "/chat/completions"
-            val conn = URL(endpoint).openConnection() as HttpURLConnection
+            val conn = URI.create(endpoint).toURL().openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
             conn.connectTimeout = TIMEOUT_MS
             conn.readTimeout = TIMEOUT_MS
@@ -69,8 +80,9 @@ class OpenAiCompatibleClient(
     private fun extractContent(respText: String): String {
         val parsed = runCatching { Json.parseToJsonElement(respText).jsonObject }.getOrNull() ?: return respText
         val choices = parsed["choices"] as? JsonArray ?: return respText
-        val message = (choices.firstOrNull() as? kotlinx.serialization.json.JsonObject)?.get("message") as? JsonObject
-            ?: return respText
+        val message =
+            (choices.firstOrNull() as? kotlinx.serialization.json.JsonObject)?.get("message") as? JsonObject
+                ?: return respText
         return (message["content"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() } ?: respText
     }
 
