@@ -64,7 +64,7 @@ Kotlin under `backend/` must pass ktlint before it is handed over.
 - `cd backend && ./gradlew :ai:ktlintCheck` checks format and style. A violation fails the task.
 - `cd backend && ./gradlew :ai:ktlintFormat` rewrites sources to the ktlint style. Do not hand-format around it.
 - The Kotlin compiler treats warnings as errors (`allWarningsAsErrors`). Do not suppress them with annotations or compiler flags.
-- GitHub Actions runs `:ai:ktlintCheck` and `:ai:check` on push and pull request. That workflow has to stay green.
+- GitHub Actions runs `:ai:ktlintCheck` and `:ai:check` on push to `main` and on pull requests into `main`. That workflow has to stay green.
 
 Each project module (`backend/ai`, `backend/server`, `frontend`, and any module added later) keeps its own `README.md` up to date. Update that file in the same change when the module's role, folder layout, public API, or run and check commands change. The README states whether the module is a library or an entry point, what other modules may call, and how to build and check it.
 
