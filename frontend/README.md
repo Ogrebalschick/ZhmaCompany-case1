@@ -2,7 +2,7 @@
 
 Один экран: шапка с ролью, лента ответов ассистента, поле ввода и боковой черновик. Промпты и автомат живут в `backend/`.
 
-Обновлено: при загрузке экран проявляется, ожидание сменяет фразы, отправленная реплика вылетает из поля ввода.
+Обновлено: макет баннера считает остаток символов и правило ссылки. Буквы остаются вёрсткой поверх плашки.
 
 Статус: `npm run dev` в этой папке открывает `http://localhost:5173` и ходит в `http://localhost:8080`. Сервер должен быть запущен. Чтобы обойтись без него, в `.env.development.local` поставьте `VITE_USE_MOCK=true`.
 
@@ -42,7 +42,7 @@ VITE_USE_MOCK=true
 - `campaign_draft` — `draft`, `missing: string[]`, `readyToSave`, необязательный `choices`. Кнопка «Сохранить» только при `readyToSave`, шлёт `подтверждаю`. Коды сегментов и id мест остаются в `draft`. `choices` объясняет уже выбранные коды и в кампанию не сохраняется.
 - `quick_replies` — `options: string[]`. Клик шлёт строку как есть. Если это код сегмента, темы или id места, на кнопке подпись из справочника, например «Возраст 46–60 (AGE_46_60)», а уходит `AGE_46_60`. Незнакомая строка пишется на кнопке целиком. Над полем только кнопки последнего ответа. Пока job в `PENDING`, они заблокированы.
 - `entity_proposal` — `proposal: { kind, name, code, description }`. `TAG` — «Создать тег», `PLACE` — «Создать место». Кнопки шлют `подтверждаю` и `отмена`.
-- `creative_preview` — `banner`. `STORY` узкая рамка, иначе широкая. Текст рисует вёрстка, не картинка.
+- `creative_preview` — `banner`. `STORY` узкая рамка, иначе широкая. Заголовок, текст и CTA — вёрстка поверх плашки, не буквы внутри картинки. Кнопка макета никуда не ведёт. Под рамкой остаток символов: STORY 100/500, SMART_BANNER 250/1000. Незнакомый тип счётчик не получает. Превышение лимита пишется отдельно. Строка про `actionType`: `externalLink` и `openSmartLink` — «Ссылка нужна», `closeCampaign` и `doneCampaign` — «Ссылка запрещена», `default` — «Ссылка не нужна». Пустая нужная ссылка и заполненная запрещённая подсвечиваются. Необязательный `backgroundUrl` становится фоном плашки, текст остаётся поверх. Без адреса остаётся градиент. Сам адрес ссылки показывается текстом.
 - `campaign_list` — `items` с именем, `state`, датами и отдельным признаком `published`. Экран этот блок в ленте больше не ждёт. Список слева — это `GET /api/campaigns` плюс текущий черновик из блока `campaign_draft`, если в `draft.name` есть текст. Новый `type` не нужен. Шапка и `document.title` берут то же `draft.name`.
 - `warnings` — жёлтые строки, ввод не блокируют.
 - любой другой `type` — компонент ничего не рисует, текст сообщения остаётся.
@@ -85,8 +85,10 @@ VITE_USE_MOCK=true
 - `тег` — предложение тега
 - `место` вместе с `созда` или `нов` — предложение места
 - `вариант` — быстрые ответы
-- `смарт` — широкое превью
-- `баннер`, `креатив` или `сторис` — узкая история
+- `длинн` — текст, что заголовок длиннее 100 символов STORY. Блока `creative_preview` нет, в черновик баннер не пишется
+- `внешн` — текст, что для `externalLink` нужна ссылка. Макета нет
+- `смарт` — широкое превью `WEB`, `actionType: default`, счётчик в плюсе, строка «Ссылка не нужна»
+- `баннер`, `креатив` или `сторис` — узкая история `ANDROID` с теми же правилами. Проверки `длинн` и `внешн` срабатывают раньше этих слов
 - `неизвестн` — текст и блок `future_widget`, который лента пропускает
 
 Стартовые фразы пустой ленты: «Кампания «Баня и аквапарк» для женщин старше 35 в Москве, промо на главном» и «Кампания по вкладу для клиентов в Москве, сторис на главном экране».
@@ -113,6 +115,7 @@ VITE_USE_MOCK=true
 - `frontend/src/chat/selectors.ts` — последний черновик и последние быстрые ответы
 - `frontend/src/chat/phrases.ts` — `подтверждаю`, `отмена`, логин, фразы ожидания, две стартовые фразы (`OWN_BRIEF`, `STARTER_BRIEF`)
 - `frontend/src/labels/fields.ts` — подписи полей, аудитории, `missing`, строки причины из `choices` и подсказка про вес 0 и CTR 15
+- `frontend/src/labels/banner.ts` — лимиты заголовка и текста, строка про ссылку, фон плашки
 - `frontend/src/labels/states.ts` — ярлык того же `state` и отдельно `published`
 - `frontend/src/labels/catalog.ts` — имена сегментов, мест, тегов и подпись кнопки `replyLabel`
 - `frontend/src/components/layout/AppShell.tsx` — колонки, проявление при загрузке, стартовая ширина черновика 460px и ручка изменения ширины
@@ -153,7 +156,7 @@ VITE_USE_MOCK=true
 - Фразы мока и свой бриф: `frontend/src/mock/mockClient.ts`, `frontend/src/mock/fixtures.ts`, `frontend/src/chat/phrases.ts`, `frontend/src/components/thread/EmptyThread.tsx`
 - Карточка черновика, `choices` и «Сохранить»: `frontend/src/components/blocks/CampaignDraftCard.tsx`, `frontend/src/components/blocks/DraftChangeNote.tsx`, `frontend/src/components/blocks/DraftField.tsx`, `frontend/src/labels/draftRows.ts`, `frontend/src/labels/fields.ts`, `frontend/src/api/types.ts`, `frontend/src/api/guards.ts`, `frontend/src/components/blocks/MissingList.tsx`, `frontend/src/components/draft/DraftRail.tsx`, `frontend/src/components/layout/AppShell.tsx`
 - Подписи полей и статусов: `frontend/src/labels/fields.ts`, `frontend/src/labels/states.ts`, `frontend/src/labels/catalog.ts`
-- Превью баннера: `frontend/src/components/blocks/CreativePreview.tsx`, `frontend/src/components/blocks/StoryFrame.tsx`, `frontend/src/components/blocks/SmartBannerFrame.tsx`
+- Превью баннера: `frontend/src/components/blocks/CreativePreview.tsx`, `frontend/src/components/blocks/StoryFrame.tsx`, `frontend/src/components/blocks/SmartBannerFrame.tsx`, `frontend/src/labels/banner.ts`
 - Быстрые ответы: `frontend/src/components/blocks/QuickReplies.tsx`, `frontend/src/labels/catalog.ts`, `frontend/src/components/composer/QuickReplyBar.tsx`, `frontend/src/chat/selectors.ts`
 - Цвета и страница: `frontend/src/styles/global.css`, `frontend/src/components/layout/AppShell.tsx`
 - Список кампаний слева: `frontend/src/components/layout/CampaignDrawer.tsx`, `frontend/src/components/layout/HeaderBar.tsx`, `frontend/src/chat/useChat.ts`, `frontend/src/chat/campaignList.ts`, `frontend/src/api/client.ts`
@@ -184,3 +187,11 @@ VITE_USE_MOCK=true
 **LLM.** Имя списка и заголовок вкладки не заполняет.
 
 **Сервер.** `GET /api/campaigns` отдаёт сохранённые кампании. После `SAVE_CAMPAIGN` новая строка уже в этом списке, следующий ответ клиента её подхватывает. Пока `savedCampaignId` нет, экран сам держит временную строку `DRAFT` с `published` false и убирает её, когда этот id уже есть в ответе списка.
+
+Макет баннера — тот же блок `creative_preview`. Новый `type` не нужен.
+
+**Агент.** Намерение `GENERATE_CREATIVE`. Лимиты и пара `actionType` / `link` проверяются кодом: STORY 100/500 и только `iOS`/`ANDROID`, SMART_BANNER 250/1000. `link` обязателен для `externalLink` и `openSmartLink` и запрещён для `closeCampaign` и `doneCampaign`. Невалидный баннер не попадает в ответ и не пишется в черновик. Валидный уходит блоком `creative_preview`.
+
+**LLM.** В текст баннера отдаёт только `headline`, `body` и `cta`. Картинку не рисует. Проценты, суммы, капс и восклицания, которых не было во входе, не добавляет.
+
+**Сервер.** При сохранении кампании баннер кладётся в JSON: `actionType`, `title`, `text`, `link`, `button.name`. Канал берётся из черновика. Фон, если он появится, отдаётся отдельным адресом в `backgroundUrl`. Буквы в эту картинку не входят.

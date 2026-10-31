@@ -107,6 +107,7 @@ function asBanner(raw: Record<string, unknown>): BannerDraft | null {
     actionType: asString(raw.actionType),
     link: asString(raw.link),
     cta: asString(raw.cta),
+    backgroundUrl: asString(raw.backgroundUrl),
   };
 }
 

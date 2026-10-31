@@ -13,6 +13,7 @@ export interface BannerDraft {
   actionType?: string | null;
   link?: string | null;
   cta?: string | null;
+  backgroundUrl?: string | null;
 }
 
 export interface EntityProposal {

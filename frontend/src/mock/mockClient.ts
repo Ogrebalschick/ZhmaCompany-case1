@@ -183,6 +183,18 @@ export class MockChatClient implements ChatClient {
         ],
       };
     }
+    if (lower.includes("длинн")) {
+      return {
+        text: "Заголовок длиннее 100 символов для STORY. Макет не показываю и в черновик не пишу.",
+        blocks: [],
+      };
+    }
+    if (lower.includes("внешн")) {
+      return {
+        text: "Для externalLink нужна ссылка. Макет не показываю и в черновик не пишу.",
+        blocks: [],
+      };
+    }
     if (lower.includes("смарт")) {
       return {
         text: "Так может выглядеть смарт-баннер.",
