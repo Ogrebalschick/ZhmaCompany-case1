@@ -2,21 +2,35 @@ import { errorText } from "./errors";
 import { requestHeaders } from "./headers";
 import { normalizeMessage, normalizeReply } from "./guards";
 import type { ChatClient } from "./client";
-import type { ChatMessage, JobStatus, JobView, RequestContext, SendAccepted, SessionCreated } from "./types";
+import type {
+  ChatMessage,
+  JobStatus,
+  JobView,
+  RequestContext,
+  SendAccepted,
+  SessionCreated,
+} from "./types";
 
 const API = "/api";
 
 export class HttpChatClient implements ChatClient {
   async createSession(ctx: RequestContext): Promise<SessionCreated> {
     const body = await this.request(ctx, `${API}/sessions`, { method: "POST" });
-    if (!body || typeof body !== "object" || typeof (body as { sessionId?: unknown }).sessionId !== "string") {
+    if (
+      !body ||
+      typeof body !== "object" ||
+      typeof (body as { sessionId?: unknown }).sessionId !== "string"
+    ) {
       throw new Error("Сервер не вернул сессию.");
     }
     return { sessionId: (body as { sessionId: string }).sessionId };
   }
 
   async getMessages(ctx: RequestContext, sessionId: string): Promise<ChatMessage[]> {
-    const body = await this.request(ctx, `${API}/sessions/${encodeURIComponent(sessionId)}/messages`);
+    const body = await this.request(
+      ctx,
+      `${API}/sessions/${encodeURIComponent(sessionId)}/messages`,
+    );
     const list = Array.isArray(body)
       ? body
       : body && typeof body === "object" && Array.isArray((body as { messages?: unknown }).messages)
@@ -30,11 +44,19 @@ export class HttpChatClient implements ChatClient {
   }
 
   async sendMessage(ctx: RequestContext, sessionId: string, text: string): Promise<SendAccepted> {
-    const body = await this.request(ctx, `${API}/sessions/${encodeURIComponent(sessionId)}/messages`, {
-      method: "POST",
-      body: JSON.stringify({ text }),
-    });
-    if (!body || typeof body !== "object" || typeof (body as { jobId?: unknown }).jobId !== "string") {
+    const body = await this.request(
+      ctx,
+      `${API}/sessions/${encodeURIComponent(sessionId)}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({ text }),
+      },
+    );
+    if (
+      !body ||
+      typeof body !== "object" ||
+      typeof (body as { jobId?: unknown }).jobId !== "string"
+    ) {
       throw new Error("Сервер не принял сообщение.");
     }
     return { jobId: (body as { jobId: string }).jobId };
@@ -53,7 +75,11 @@ export class HttpChatClient implements ChatClient {
     };
   }
 
-  private async request(ctx: RequestContext, path: string, init: RequestInit = {}): Promise<unknown> {
+  private async request(
+    ctx: RequestContext,
+    path: string,
+    init: RequestInit = {},
+  ): Promise<unknown> {
     let response: Response;
     try {
       response = await fetch(path, {
@@ -61,7 +87,7 @@ export class HttpChatClient implements ChatClient {
         headers: { ...requestHeaders(ctx), ...(init.headers ?? {}) },
       });
     } catch (error) {
-      throw new TypeError(errorText(error));
+      throw new TypeError(errorText(error), { cause: error });
     }
     if (!response.ok) throw new Error(await readError(response));
     if (response.status === 204) return null;

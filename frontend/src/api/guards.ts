@@ -7,10 +7,13 @@ import type {
   ChatMessage,
   CreativePreviewBlock,
   DraftCampaign,
+  DraftChoices,
   EntityProposal,
   EntityProposalBlock,
   IncomingBlock,
+  PlaceChoice,
   QuickRepliesBlock,
+  SegmentChoice,
   WarningsBlock,
 } from "./types";
 
@@ -51,6 +54,7 @@ function normalizeBlock(block: Record<string, unknown>, type: string): IncomingB
       draft: isRecord(block.draft) ? block.draft : {},
       missing: asStrings(block.missing),
       readyToSave: block.readyToSave === true,
+      ...(isRecord(block.choices) ? { choices: block.choices } : {}),
     };
   }
   if (type === "quick_replies") return { type, options: asStrings(block.options) };
@@ -107,7 +111,8 @@ function asBanner(raw: Record<string, unknown>): BannerDraft | null {
 }
 
 function asProposal(value: unknown): EntityProposal | null {
-  if (!isRecord(value) || typeof value.kind !== "string" || typeof value.name !== "string") return null;
+  if (!isRecord(value) || typeof value.kind !== "string" || typeof value.name !== "string")
+    return null;
   return {
     kind: value.kind,
     name: value.name,
@@ -116,13 +121,59 @@ function asProposal(value: unknown): EntityProposal | null {
   };
 }
 
+function asSegmentChoice(value: unknown): SegmentChoice | null {
+  if (!isRecord(value)) return null;
+  if (
+    typeof value.code !== "string" ||
+    typeof value.type !== "string" ||
+    typeof value.state !== "string"
+  )
+    return null;
+  if (value.list !== "included" && value.list !== "excluded") return null;
+  if (typeof value.count !== "number" || !Number.isFinite(value.count)) return null;
+  return {
+    code: value.code,
+    list: value.list,
+    type: value.type,
+    count: value.count,
+    state: value.state,
+  };
+}
+
+function asPlaceChoice(value: unknown): PlaceChoice | null {
+  if (!isRecord(value) || !("defaultBanner" in value)) return null;
+  if (typeof value.id !== "number" || typeof value.state !== "string") return null;
+  if (value.defaultBanner !== null && typeof value.defaultBanner !== "string") return null;
+  return { id: value.id, state: value.state, defaultBanner: value.defaultBanner };
+}
+
+function asChoices(value: unknown): DraftChoices | undefined {
+  if (!isRecord(value)) return undefined;
+  const segments = Array.isArray(value.segments)
+    ? value.segments.flatMap((item) => {
+        const row = asSegmentChoice(item);
+        return row ? [row] : [];
+      })
+    : [];
+  const places = Array.isArray(value.places)
+    ? value.places.flatMap((item) => {
+        const row = asPlaceChoice(item);
+        return row ? [row] : [];
+      })
+    : [];
+  if (segments.length === 0 && places.length === 0) return undefined;
+  return { segments, places };
+}
+
 export function asCampaignDraft(block: IncomingBlock): CampaignDraftBlock | null {
-  if (block.type !== "campaign_draft" || !isRecord(block.draft) || !Array.isArray(block.missing)) return null;
+  if (block.type !== "campaign_draft" || !isRecord(block.draft) || !Array.isArray(block.missing))
+    return null;
   return {
     type: "campaign_draft",
     draft: asDraft(block.draft),
     missing: asStrings(block.missing),
     readyToSave: block.readyToSave === true,
+    choices: asChoices(block.choices),
   };
 }
 
@@ -161,7 +212,8 @@ export function asWarnings(block: IncomingBlock): WarningsBlock | null {
 }
 
 export function asCampaignItem(value: unknown): CampaignListItem | null {
-  if (!isRecord(value) || typeof value.name !== "string" || typeof value.state !== "string") return null;
+  if (!isRecord(value) || typeof value.name !== "string" || typeof value.state !== "string")
+    return null;
   if (typeof value.id !== "number" || typeof value.startDate !== "string") return null;
   return {
     id: value.id,

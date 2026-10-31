@@ -15,6 +15,13 @@
   color: var(--muted);
 }
 
+.actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
 .empty button {
   text-align: left;
   border-radius: 16px;

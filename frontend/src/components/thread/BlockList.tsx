@@ -6,8 +6,8 @@ import {
   asQuickReplies,
   asWarnings,
 } from "../../api/guards";
-import type { IncomingBlock } from "../../api/types";
-import { CampaignDraftCard } from "../blocks/CampaignDraftCard";
+import type { CampaignDraftBlock, IncomingBlock } from "../../api/types";
+import { DraftChangeNote } from "../blocks/DraftChangeNote";
 import { CampaignList } from "../blocks/CampaignList";
 import { CreativePreview } from "../blocks/CreativePreview";
 import { EntityProposalCard } from "../blocks/EntityProposalCard";
@@ -18,11 +18,13 @@ import styles from "./BlockList.module.css";
 
 export function BlockList({
   blocks,
+  previousDraft,
   disabled,
   onSend,
   onSave,
 }: {
   blocks: IncomingBlock[];
+  previousDraft: CampaignDraftBlock | null;
   disabled: boolean;
   onSend: (text: string) => void;
   onSave: () => void;
@@ -33,14 +35,33 @@ export function BlockList({
       {blocks.map((block, index) => {
         const key = `${block.type}-${index}`;
         const draft = asCampaignDraft(block);
-        if (draft) return <CampaignDraftCard key={key} block={draft} disabled={disabled} onSave={onSave} />;
+        if (draft) {
+          return (
+            <DraftChangeNote
+              key={key}
+              block={draft}
+              previous={previousDraft}
+              disabled={disabled}
+              onSave={onSave}
+            />
+          );
+        }
         const replies = asQuickReplies(block);
         if (replies) {
-          return <QuickReplies key={key} options={replies.options} disabled={disabled} onSend={onSend} />;
+          return (
+            <QuickReplies key={key} options={replies.options} disabled={disabled} onSend={onSend} />
+          );
         }
         const proposal = asEntityProposal(block);
         if (proposal) {
-          return <EntityProposalCard key={key} proposal={proposal.proposal} disabled={disabled} onSend={onSend} />;
+          return (
+            <EntityProposalCard
+              key={key}
+              proposal={proposal.proposal}
+              disabled={disabled}
+              onSend={onSend}
+            />
+          );
         }
         const creative = asCreativePreview(block);
         if (creative) return <CreativePreview key={key} banner={creative.banner} />;

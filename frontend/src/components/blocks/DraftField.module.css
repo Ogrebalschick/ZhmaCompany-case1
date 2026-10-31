@@ -6,6 +6,20 @@
   border-top: 1px solid var(--line);
 }
 
+.flash {
+  animation: field-flash 1s ease forwards;
+}
+
+@keyframes field-flash {
+  0%,
+  70% {
+    background: var(--accent-soft);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
 .field dt {
   color: var(--muted);
 }
@@ -13,6 +27,14 @@
 .field dd {
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.hint {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  white-space: pre-line;
 }
 
 @media (max-width: 640px) {

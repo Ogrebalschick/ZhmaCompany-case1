@@ -45,3 +45,7 @@ desktop.ini
 # Frontend
 frontend/node_modules/
 frontend/dist/
+
+# Brief and prompts stay on disk, not in git
+/prompt-*.md
+/case-readonly/

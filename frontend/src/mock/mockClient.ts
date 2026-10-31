@@ -1,22 +1,52 @@
 import type { ChatClient } from "../api/client";
-import type { AssistantReply, ChatMessage, DraftCampaign, JobView, RequestContext, SendAccepted } from "../api/types";
+import type {
+  AssistantReply,
+  ChatMessage,
+  DraftCampaign,
+  IncomingBlock,
+  JobView,
+  RequestContext,
+  SendAccepted,
+} from "../api/types";
 import { CANCEL_TEXT, CONFIRM_TEXT } from "../chat/phrases";
 import {
+  AGE_26_REPLY,
+  AGE_46_REPLY,
   MOCK_SESSION_ID,
+  TOPIC_EVENT_REPLY,
+  TOPIC_LIFESTYLE_REPLY,
+  WEIGHT_OFFER,
+  ageCodeFromText,
+  applyServerMetrics,
   campaignListReply,
+  CITY_MSK_REASON,
+  FEMALE_REASON,
+  INACTIVE_PLACE_WARNING,
+  PLACE_MAIN_REASON,
+  choicesFor,
   draftBlock,
   incompleteDraft,
   isDepositMoscowBrief,
+  isOwnBrief,
+  ownBriefDraft,
+  ownMissing,
+  ctrFromText,
+  isWideReach,
   placeProposal,
   readyDraft,
+  resolveSchedule,
   savedDraft,
   smartBanner,
   storyBanner,
   tagProposal,
+  topicCodeFromText,
+  utcToday,
   warningsReply,
+  weightFromText,
 } from "./fixtures";
 
 type Phase = "empty" | "incomplete" | "ready" | "saved";
+type DraftKind = "none" | "deposit" | "own";
 
 interface MockJob {
   seen: number;
@@ -26,6 +56,7 @@ interface MockJob {
 
 export class MockChatClient implements ChatClient {
   private phase: Phase = "empty";
+  private kind: DraftKind = "none";
   private draft: DraftCampaign = {};
   private jobs = new Map<string, MockJob>();
   private seq = 0;
@@ -62,13 +93,24 @@ export class MockChatClient implements ChatClient {
     const lower = text.trim().toLowerCase();
     if (lower === CONFIRM_TEXT) return this.confirm();
     if (lower === CANCEL_TEXT) return this.cancel();
+    if (isOwnBrief(lower)) {
+      this.kind = "own";
+      this.phase = "incomplete";
+      this.draft = ownBriefDraft();
+      return this.ownReply();
+    }
     if (isDepositMoscowBrief(lower)) {
+      this.kind = "deposit";
       this.phase = "incomplete";
       this.draft = incompleteDraft();
       return {
-        text: "Собрал черновик кампании по вкладу для Москвы. Осталось уточнить время начала. Отправьте «подтверждаю», чтобы поставить 10:00 и открыть сохранение.",
-        blocks: [draftBlock(this.draft, ["startTime"], false)],
+        text: `Собрал черновик кампании по вкладу для Москвы. ${CITY_MSK_REASON}. ${PLACE_MAIN_REASON}. Осталось уточнить время начала. Отправьте «подтверждаю», чтобы поставить 10:00 и открыть сохранение.`,
+        blocks: this.draftBlocks(["startTime"], false),
       };
+    }
+    if (this.kind === "own") {
+      const followUp = this.applyOwnDetails(text);
+      if (followUp) return followUp;
     }
     if (lower.includes("неизвестн")) {
       return {
@@ -93,7 +135,9 @@ export class MockChatClient implements ChatClient {
     if (lower.includes("вариант")) {
       return {
         text: "Выберите следующий шаг.",
-        blocks: [{ type: "quick_replies", options: [CONFIRM_TEXT, CANCEL_TEXT, "Покажи кампании"] }],
+        blocks: [
+          { type: "quick_replies", options: [CONFIRM_TEXT, CANCEL_TEXT, "Покажи кампании"] },
+        ],
       };
     }
     if (lower.includes("смарт")) {
@@ -115,34 +159,163 @@ export class MockChatClient implements ChatClient {
   }
 
   private confirm(): AssistantReply {
-    if (this.phase === "ready" || this.phase === "saved") {
-      this.phase = "saved";
-      this.draft = savedDraft();
+    if (this.phase === "saved") {
       return {
-        text: "Кампания сохранена. Идентификатор 201.",
-        blocks: [draftBlock(this.draft, [], true)],
+        text: "Кампания уже сохранена. Идентификатор 201.",
+        blocks: [],
       };
     }
+    if (this.phase === "ready") {
+      const serverNote = serverMetricNote(this.draft);
+      this.phase = "saved";
+      const saved = this.kind === "own" ? { ...this.draft, savedCampaignId: 201 } : savedDraft();
+      this.draft = applyServerMetrics(saved);
+      return {
+        text: `Кампания сохранена. Идентификатор 201.${serverNote}`,
+        blocks: this.draftBlocks([], false),
+      };
+    }
+    if (this.kind === "own") {
+      const missing = ownMissing(this.draft);
+      if (missing.length > 0) {
+        const reply = this.ownReply();
+        return { ...reply, text: `Сохранять пока рано. ${reply.text}` };
+      }
+      this.phase = "ready";
+      return {
+        text: "Черновик готов к сохранению. Проверьте поля и нажмите «Сохранить».",
+        blocks: this.draftBlocks([], true),
+      };
+    }
+    this.kind = "deposit";
     this.phase = "ready";
     this.draft = readyDraft();
     return {
       text: "Черновик готов к сохранению. Проверьте поля и нажмите «Сохранить».",
-      blocks: [draftBlock(this.draft, [], true)],
+      blocks: this.draftBlocks([], true),
+    };
+  }
+
+  private applyOwnDetails(text: string): AssistantReply | null {
+    const lower = text.trim().toLowerCase();
+    const age = ageCodeFromText(lower);
+    const topic = topicCodeFromText(lower);
+    const time = text.match(/(?:^|[^\d])(\d{2}:\d{2})/);
+    const schedule = resolveSchedule(text, utcToday(), this.draft);
+    const weight = weightFromText(lower);
+    const ctr = ctrFromText(lower);
+    const reach = isWideReach(lower) && weight === null;
+    if (
+      !age &&
+      !topic &&
+      !time &&
+      !schedule.touched &&
+      schedule.notes.length === 0 &&
+      weight === null &&
+      ctr === null &&
+      !reach
+    ) {
+      return null;
+    }
+
+    let segments = [...(this.draft.includedSegments ?? [])];
+    if (age) {
+      segments = segments.filter((code) => code !== "AGE_26_45" && code !== "AGE_46_60");
+      segments.push(age);
+    }
+    this.draft = {
+      ...this.draft,
+      includedSegments: segments,
+      topic: topic ?? this.draft.topic,
+      startDate:
+        schedule.touched || schedule.notes.length > 0 ? schedule.startDate : this.draft.startDate,
+      endDate:
+        schedule.touched || schedule.notes.length > 0 ? schedule.endDate : this.draft.endDate,
+      startTime: time ? time[1] : this.draft.startTime,
+      weight: weight ?? this.draft.weight,
+      initialCtr: ctr ?? this.draft.initialCtr,
+    };
+    this.phase = "incomplete";
+    const reply = this.ownReply();
+    let message =
+      schedule.notes.length > 0 ? `${schedule.notes.join(" ")} ${reply.text}` : reply.text;
+    if (reach && this.draft.weight == null) {
+      const hasButtons = reply.blocks.some((block) => block.type === "quick_replies");
+      message = hasButtons
+        ? `${message} Широкий охват сам вес не ставит. Предлагаю вес 10. Напишите «вес 10».`
+        : `${message} Широкий охват сам вес не ставит. Предлагаю вес 10.`;
+      if (!hasButtons) reply.blocks.push({ type: "quick_replies", options: [WEIGHT_OFFER] });
+    }
+    return { ...reply, text: message };
+  }
+
+  private ownReply(): AssistantReply {
+    const current = ownMissing(this.draft)[0];
+    const blocks = this.draftBlocks(current ? [current] : [], false);
+    if (current === "startDate") {
+      return {
+        text: `Собрал черновик «Баня и аквапарк» для женщин в Москве, место показа — промо на главном. ${FEMALE_REASON}. ${CITY_MSK_REASON}. ${PLACE_MAIN_REASON}. Напишите дату начала в виде ГГГГ-ММ-ДД. Понятны «с завтра», «на две недели» и «до конца года». Сам дату не выдумаю.`,
+        blocks,
+      };
+    }
+    if (current === "startTime") {
+      return {
+        text: "Дата записана. Напишите время начала в виде ЧЧ:ММ. Сам его не поставлю.",
+        blocks,
+      };
+    }
+    if (current === "topic") {
+      blocks.push({ type: "quick_replies", options: [TOPIC_LIFESTYLE_REPLY, TOPIC_EVENT_REPLY] });
+      return {
+        text: "Темы «аквапарк» в справочнике нет. Подойдёт образ жизни или событие?",
+        blocks,
+      };
+    }
+    if (current === "segments") {
+      blocks.push({ type: "quick_replies", options: [AGE_26_REPLY, AGE_46_REPLY] });
+      return {
+        text: "Возраст «старше 35» лежит между двумя активными сегментами, поэтому код не выбираю. Возраст 26–45, тип AGE, 24 000 000 клиентов. Возраст 46–60, тип AGE, 18 000 000 клиентов.",
+        blocks,
+      };
+    }
+    return {
+      text: "Обязательные поля собраны. Отправьте «подтверждаю», чтобы открыть сохранение.",
+      blocks,
     };
   }
 
   private cancel(): AssistantReply {
     return {
       text: "Предложение снято. Черновик кампании остался как был.",
-      blocks: this.phase === "empty" ? [] : [draftBlock(this.draft, this.missing(), this.ready())],
+      blocks: this.phase === "empty" ? [] : this.draftBlocks(this.missing(), this.ready()),
     };
   }
 
+  private draftBlocks(missing: string[], readyToSave: boolean): IncomingBlock[] {
+    const blocks: IncomingBlock[] = [draftBlock(this.draft, missing, readyToSave)];
+    const inactive = choicesFor(this.draft)?.places?.some((place) => place.state === "INACTIVE");
+    if (inactive) blocks.push({ type: "warnings", items: [INACTIVE_PLACE_WARNING] });
+    return blocks;
+  }
+
   private missing(): string[] {
-    return this.phase === "incomplete" ? ["startTime"] : [];
+    if (this.phase !== "incomplete") return [];
+    if (this.kind === "own") {
+      const current = ownMissing(this.draft)[0];
+      return current ? [current] : [];
+    }
+    return ["startTime"];
   }
 
   private ready(): boolean {
-    return this.phase === "ready" || this.phase === "saved";
+    return this.phase === "ready";
   }
+}
+
+function serverMetricNote(draft: DraftCampaign): string {
+  const parts: string[] = [];
+  if (draft.weight == null) parts.push("вес 0");
+  if (draft.initialCtr == null) parts.push("CTR 15");
+  if (parts.length === 0) return "";
+  return ` Сервер записал ${parts.join(" и ")}, в черновике этого не было.`;
 }

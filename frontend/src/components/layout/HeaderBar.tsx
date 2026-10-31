@@ -17,7 +17,11 @@ export function HeaderBar({
   mock: boolean;
   onRoleChange: (role: Role) => void;
 }) {
-  const sessionLabel = sessionId ? `Сессия ${sessionId}` : booting ? "Сессия создаётся" : "Сессия не создана";
+  const sessionLabel = sessionId
+    ? `Сессия ${sessionId}`
+    : booting
+      ? "Сессия создаётся"
+      : "Сессия не создана";
   return (
     <header className={styles.bar}>
       <div>

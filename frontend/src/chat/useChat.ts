@@ -27,10 +27,13 @@ export function useChat(client: ChatClient) {
   const sessionRef = useRef(sessionId);
   const request = useRef(0);
   const sending = useRef(false);
-  roleRef.current = role;
-  sessionRef.current = sessionId;
 
   const context = useCallback(() => ({ user: USER_LOGIN, role: roleRef.current }), []);
+
+  useEffect(() => {
+    roleRef.current = role;
+    sessionRef.current = sessionId;
+  }, [role, sessionId]);
 
   useEffect(() => {
     let cancelled = false;

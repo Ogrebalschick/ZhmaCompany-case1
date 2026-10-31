@@ -90,4 +90,4 @@ npm run build
 
 `weight` по умолчанию 0, `initialCtr` по умолчанию 15, если в черновике пусто. Новая кампания: `DRAFT`, `published=false`, автор из `X-User`.
 
-Подробности модулей: `backend/ai/README.md`, `backend/server/README.md`, `frontend/README.md`. Карта экрана: `frontend-structure.md`.
+Подробности модулей: `backend/ai/README.md`, `backend/server/README.md`, `frontend/README.md`. Карта экрана: `frontend/README.md`.
