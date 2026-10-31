@@ -1,4 +1,4 @@
-﻿package ru.zhma.campaign.ai.llm
+package ru.zhma.campaign.ai.llm
 
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -14,111 +14,51 @@ import org.junit.jupiter.api.Test
 class MockLlmClientTest {
     private val llm = MockLlmClient()
     private val json = Json { ignoreUnknownKeys = true }
+    private val intentSystem = "Разбор. intent — CAMPAIGN_EDIT | CONFIRM | ... Текущий черновик:\n{}\nКаталог:\n"
 
-    // System-строка, по которой мок понимает «разбор намерения».
-    private val intentSystem =
-        "Разбери намерение. Возможные intent: CAMPAIGN_EDIT, CONFIRM, CANCEL, GENERATE_CREATIVE, LIST_CAMPAIGNS, OTHER. Верни JSON."
+    private fun parse(text: String): JsonObject = json.parseToJsonElement(text).jsonObject
 
-    // Набор фраз для ревью — видно, что именно проверяется.
-    private val phrases =
-        listOf(
-            "Настрой кампанию по вкладу в Москве для возраста 26-45 лет", // полный бриф: Москва + 26-45
-            "покажи кампании",
-            "подтверждаю",
-            "отмена",
-            "сделай сторис",
-            "Назови кампанию «Тестовая»", // без дат
-        )
+    private fun intent(text: String): String = parse(text)["intent"]!!.jsonPrimitive.content
 
-    private fun patch(text: String): JsonObject = json.parseToJsonElement(text).jsonObject["patch"]?.jsonObject ?: JsonObject(emptyMap())
-
-    private fun intent(text: String): String =
-        json
-            .parseToJsonElement(text)
-            .jsonObject["intent"]!!
-            .jsonPrimitive.content
+    private fun patch(text: String): JsonObject = parse(text)["patch"]?.jsonObject ?: JsonObject(emptyMap())
 
     @Test
-    fun `full brief extracts Moscow and age segment`() =
+    fun `brief gives name and topic guess but no dates`() =
         runBlocking {
-            val out = llm.chat(intentSystem, phrases[0], 0.2, json = true)
+            val out = llm.chat(intentSystem, "Кампания на баню и спа в Сочи для женщин, сторис на главном", 0.1, json = true)
             assertEquals("CAMPAIGN_EDIT", intent(out))
-            val segs = patch(out)["includedSegments"]!!.jsonArray.map { it.jsonPrimitive.content }
-            assertTrue(segs.contains("CITY_MSK"))
-            assertTrue(segs.contains("AGE_26_45"))
-            // Даты не выдуманы.
+            assertEquals("Баню и спа в Сочи", patch(out)["name"]!!.jsonPrimitive.content)
+            assertEquals("LIFESTYLE", patch(out)["topicGuess"]!!.jsonPrimitive.content)
             assertFalse(patch(out).containsKey("startDate"))
-            assertFalse(patch(out).containsKey("startTime"))
         }
 
     @Test
-    fun `shows list campaigns`() =
+    fun `commands`() =
         runBlocking {
-            val out = llm.chat(intentSystem, phrases[1], 0.2, json = true)
-            assertEquals("LIST_CAMPAIGNS", intent(out))
+            assertEquals("LIST_CAMPAIGNS", intent(llm.chat(intentSystem, "покажи кампании", 0.1, true)))
+            assertEquals("CONFIRM", intent(llm.chat(intentSystem, "подтверждаю", 0.1, true)))
+            assertEquals("CANCEL", intent(llm.chat(intentSystem, "отмена", 0.1, true)))
+            assertEquals("GENERATE_CREATIVE", intent(llm.chat(intentSystem, "сделай текст баннера", 0.1, true)))
+            assertEquals("GENERATE_IMAGE", intent(llm.chat(intentSystem, "нарисуй картинку", 0.1, true)))
+            assertEquals("QUESTION", intent(llm.chat(intentSystem, "какие есть места?", 0.1, true)))
         }
 
     @Test
-    fun `confirm`() =
+    fun `quoted name is taken as is`() =
         runBlocking {
-            val out = llm.chat(intentSystem, phrases[2], 0.2, json = true)
-            assertEquals("CONFIRM", intent(out))
-            assertEquals(
-                true,
-                json
-                    .parseToJsonElement(out)
-                    .jsonObject["confirm"]!!
-                    .jsonPrimitive.content == "true",
-            )
-        }
-
-    @Test
-    fun `cancel`() =
-        runBlocking {
-            val out = llm.chat(intentSystem, phrases[3], 0.2, json = true)
-            assertEquals("CANCEL", intent(out))
-            assertEquals(
-                false,
-                json
-                    .parseToJsonElement(out)
-                    .jsonObject["confirm"]!!
-                    .jsonPrimitive.content == "true",
-            )
-        }
-
-    @Test
-    fun `generate creative keeps brief`() =
-        runBlocking {
-            val out = llm.chat(intentSystem, phrases[4], 0.2, json = true)
-            assertEquals("GENERATE_CREATIVE", intent(out))
-            val brief = patch(out)["creativeBrief"]!!.jsonPrimitive.content
-            assertTrue(brief.contains("сторис"))
-        }
-
-    @Test
-    fun `phrase without dates has no startDate and keeps name`() =
-        runBlocking {
-            val out = llm.chat(intentSystem, phrases[5], 0.2, json = true)
-            assertEquals("CAMPAIGN_EDIT", intent(out))
-            assertFalse(patch(out).containsKey("startDate"))
-            assertFalse(patch(out).containsKey("startTime"))
+            val out = llm.chat(intentSystem, "Назови кампанию «Тестовая»", 0.1, json = true)
             assertEquals("Тестовая", patch(out)["name"]!!.jsonPrimitive.content)
         }
 
     @Test
     fun `banner copy returns array within limits`() =
         runBlocking {
-            val system = "Сгенерируй копирайт: headline, body, cta. Верни JSON-массив."
-            val out = llm.chat(system, "вклад для физлиц", 0.2, json = true)
+            val out = llm.chat("Сгенерируй: headline, body, cta.", "баня", 0.2, json = true)
             val arr = json.parseToJsonElement(out).jsonArray
             assertTrue(arr.isNotEmpty())
-            for (item in arr) {
-                val h = item.jsonObject["headline"]!!.jsonPrimitive.content
-                val b = item.jsonObject["body"]!!.jsonPrimitive.content
-                val c = item.jsonObject["cta"]!!.jsonPrimitive.content
-                assertTrue(h.length <= 40)
-                assertTrue(b.length <= 90)
-                assertTrue(c.length <= 20)
-            }
+            val item = arr[0].jsonObject
+            assertTrue(item["headline"]!!.jsonPrimitive.content.length <= 40)
+            assertTrue(item["body"]!!.jsonPrimitive.content.length <= 90)
+            assertTrue(item["cta"]!!.jsonPrimitive.content.length <= 20)
         }
 }

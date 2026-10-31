@@ -28,3 +28,18 @@
     border-bottom: 1px solid var(--line);
   }
 }
+
+.shown {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef0f3;
+  color: #5d6b7c;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.shown[data-live="true"] {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}

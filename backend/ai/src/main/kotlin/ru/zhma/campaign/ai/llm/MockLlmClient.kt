@@ -1,5 +1,11 @@
 package ru.zhma.campaign.ai.llm
 
+import kotlinx.serialization.json.JsonPrimitive
+
+/**
+ * Модель-заглушка без сети. Разбирает реплику простыми правилами, чтобы демо работало офлайн.
+ * Основной разбор дат, справочника и кнопок всё равно делает код агента, а не эта заглушка.
+ */
 class MockLlmClient : LlmClient {
     override suspend fun chat(
         system: String,
@@ -7,75 +13,82 @@ class MockLlmClient : LlmClient {
         temperature: Double,
         json: Boolean,
     ): String {
-        if (json && looksLikeIntent(system)) {
-            return mockIntent(user)
-        }
-        if (json && looksLikeBannerCopy(system)) {
-            return mockBannerCopy(user)
-        }
+        if (json && system.contains("CAMPAIGN_EDIT")) return mockIntent(user, system)
+        if (json && system.contains("headline")) return mockBannerCopy(user)
         return mockPhrase(user)
     }
 
-    private fun looksLikeIntent(system: String): Boolean = system.contains("intent") && system.contains("CAMPAIGN_EDIT")
-
-    private fun looksLikeBannerCopy(system: String): Boolean =
-        system.contains("headline") && system.contains("body") && system.contains("cta")
-
-    private fun mockIntent(user: String): String {
+    private fun mockIntent(
+        userRaw: String,
+        system: String,
+    ): String {
+        val user = userRaw.substringBefore("\n\n(Предыдущий")
         val lower = user.lowercase()
+        val trimmed = lower.trim().trimEnd('.', '!')
 
-        if (lower.contains("список") || lower.contains("покажи кампании")) {
-            return """{"intent":"LIST_CAMPAIGNS","patch":{}}"""
+        if (Regex("""список|покажи кампании|мои кампании""").containsMatchIn(lower)) return intent("LIST_CAMPAIGNS")
+        if (trimmed in setOf("подтверждаю", "сохрани", "да", "сохранить")) return """{"intent":"CONFIRM","patch":{},"confirm":true}"""
+        if (trimmed in setOf("отмена", "нет", "не надо")) return intent("CANCEL")
+        if (lower.contains("модерац")) return intent("TO_MODERATION")
+        if (Regex("""картинк|изображен|иллюстрац""").containsMatchIn(lower)) return intent("GENERATE_IMAGE", "\"creativeBrief\":${q(user)}")
+        if (Regex("""(сделай|создай|придумай|другой|переделай)\s.*(баннер|креатив|текст|вариант|сторис)""").containsMatchIn(lower)) {
+            return intent("GENERATE_CREATIVE", "\"creativeBrief\":${q(user)}")
         }
+        if (user.trim().endsWith("?")) return intent("QUESTION")
 
-        val trimmed = user.trim().lowercase()
-        if (trimmed == "подтверждаю" || trimmed == "сохрани" || trimmed == "да") {
-            return """{"intent":"CONFIRM","patch":{},"confirm":true}"""
+        val fields = mutableListOf<String>()
+        val awaitingName = system.contains("спросил про поле: name")
+        val hasName = Regex(""""name"\s*:""").containsMatchIn(system.substringAfter("Текущий черновик:").substringBefore("Каталог"))
+        Regex("""«([^»]+)»""").find(user)?.let { fields += "\"name\":${q(it.groupValues[1].trim())}" }
+        if (fields.isEmpty() && !hasName && !awaitingName) {
+            Regex("""(?iu)кампани\p{L}*\s+(?:на|для|про|по)\s+(.+?)(?:\s+для\s+|,|$)""").find(user)?.let { m ->
+                val name =
+                    m.groupValues[1]
+                        .trim()
+                        .replaceFirstChar { it.uppercase() }
+                        .take(60)
+                if (name.length >= 3) fields += "\"name\":${q(name)}"
+            }
         }
-
-        if (lower.contains("отмена") || lower.contains("не надо")) {
-            return """{"intent":"CANCEL","patch":{},"confirm":false}"""
-        }
-
-        if (lower.contains("баннер") || lower.contains("креатив") || lower.contains("сторис")) {
-            val brief = user.replace("\"", "\\\"")
-            return """{"intent":"GENERATE_CREATIVE","patch":{"creativeBrief":"$brief"}}"""
-        }
-
-        // CAMPAIGN_EDIT
-        val patchFields = mutableListOf<String>()
-        Regex("«([^»]+)»").find(user)?.let { patchFields.add("\"name\":\"${it.groupValues[1].trim()}\"") }
-
-        val segments = mutableListOf<String>()
-        if (lower.contains("москв")) segments.add("CITY_MSK")
-        if (lower.contains("санкт-петербург") || lower.contains("спб")) segments.add("CITY_SPB")
-        if ((lower.contains("26") && lower.contains("45"))) segments.add("AGE_26_45")
-        if (segments.isNotEmpty()) {
-            patchFields.add("\"includedSegments\":[${segments.joinToString(",") { "\"$it\"" }}]")
-        }
-
-        if (lower.contains("все пользователи")) patchFields.add("\"audienceType\":\"ALL_USERS\"")
-        if (lower.contains("вклад") && (lower.contains("акция") || lower.contains("продаж"))) {
-            patchFields.add("\"topic\":\"SALES\"")
-        }
-        if (lower.contains("главн")) patchFields.add("\"placeIds\":[1]")
-        Regex("\\d{4}-\\d{2}-\\d{2}").find(user)?.let { patchFields.add("\"startDate\":\"${it.value}\"") }
-        Regex("\\b(\\d{2}:\\d{2})\\b").find(user)?.let { patchFields.add("\"startTime\":\"${it.groupValues[1]}\"") }
-        Regex("(?:вес|weight)\\s*[:=]?\\s*(\\d+\\.?\\d*)", RegexOption.IGNORE_CASE).find(user)?.let {
-            patchFields.add("\"weight\":${it.groupValues[1]}")
-        }
-
-        val patchJson = if (patchFields.isEmpty()) "{}" else "{${patchFields.joinToString(",")}}"
-        return """{"intent":"CAMPAIGN_EDIT","patch":$patchJson}"""
+        topicGuess(lower)?.let { fields += "\"topicGuess\":\"$it\"" }
+        if (lower.contains("вклад") && Regex("""акци|продаж|ставк""").containsMatchIn(lower)) fields += "\"topic\":\"SALES\""
+        return intent("CAMPAIGN_EDIT", fields.joinToString(","))
     }
+
+    private fun topicGuess(lower: String): String? =
+        when {
+            Regex("""бан[яи]|спа|отдых|путешеств|аквапарк|фитнес|ресторан""").containsMatchIn(lower) -> "LIFESTYLE"
+            Regex("""вклад|кредит|карт[аыу]|скидк|кэшбэк|акци|ипотек""").containsMatchIn(lower) -> "SALES"
+            Regex("""концерт|мероприят|событи|фестивал""").containsMatchIn(lower) -> "EVENT"
+            Regex("""курс|обучен|вебинар""").containsMatchIn(lower) -> "COURSES"
+            Regex("""совет""").containsMatchIn(lower) -> "ADVICES"
+            else -> null
+        }
+
+    private fun intent(
+        name: String,
+        patch: String = "",
+    ): String = """{"intent":"$name","patch":{$patch}}"""
+
+    private fun q(value: String): String = JsonPrimitive(value).toString()
 
     private fun mockBannerCopy(user: String): String {
-        val headline = "Ваше предложение"
-        val body = "Узнайте больше о продукте и узнайте условия"
-        val cta = "Подробнее"
-        val imagePrompt = "clean product illustration, soft colors, minimal style"
-        return """[{"headline":"$headline","body":"$body","cta":"$cta","image_prompt_en":"$imagePrompt"}]"""
+        val lower = user.lowercase()
+        val headline =
+            when {
+                Regex("""бан[яи]|спа""").containsMatchIn(lower) -> "Тепло бани и спа в Сочи"
+                lower.contains("вклад") -> "Вклад для ваших целей"
+                else -> "Ваше новое предложение"
+            }
+        val body = "Выберите время и забронируйте отдых в приложении банка."
+        val image = "cozy spa interior with warm light, wooden sauna, calm atmosphere"
+        return """[{"headline":"$headline","body":"$body","cta":"Подробнее","image_prompt_en":"$image"}]"""
     }
 
-    private fun mockPhrase(user: String): String = "Принято. Готов продолжить работу над кампанией."
+    private fun mockPhrase(user: String): String =
+        if (user.contains("?")) {
+            "Работаю без подключённой модели, поэтому на вопросы отвечаю кратко. Продолжим заполнять кампанию."
+        } else {
+            "Принято. Продолжим работу над кампанией."
+        }
 }

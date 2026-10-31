@@ -17,3 +17,187 @@
   font-size: 13px;
   overflow-wrap: anywhere;
 }
+
+.imageStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.imageError {
+  margin: 10px 0 0;
+  color: var(--warning-ink);
+  font-size: 14px;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-soft);
+  border-top-color: var(--accent);
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.imageActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin: 10px 0 0;
+  font-size: 14px;
+}
+
+.imageActions a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.imageActions span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.zoomable {
+  position: relative;
+  display: inline-block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+  text-align: left;
+  color: inherit;
+  max-width: 100%;
+}
+
+.zoomHint {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.zoomable:hover .zoomHint {
+  opacity: 1;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(20, 22, 26, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 100%;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.zoomStory .frameWrap > div {
+  width: min(400px, 80vw, calc((100vh - 140px) * 0.5625));
+  height: auto;
+  aspect-ratio: 9 / 16;
+}
+
+.zoomStory h3 {
+  font-size: 30px !important;
+}
+
+.zoomStory p {
+  font-size: 18px !important;
+}
+
+.zoomBanner {
+  width: min(900px, calc(100vw - 48px));
+}
+
+.zoomBanner .frameWrap {
+  display: block;
+  width: 100%;
+}
+
+.zoomBanner .frameWrap > div {
+  min-height: 300px;
+  font-size: 1.4em;
+}
+
+.zoomActions {
+  display: flex;
+  gap: 10px;
+}
+
+.zoomActions a,
+.zoomActions button {
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 16px;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.zoomActions a:first-child {
+  background: var(--accent);
+  color: #fff;
+}
+
+.generating {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: inherit;
+  background: rgba(10, 30, 20, 0.55);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.generating .spinner {
+  width: 26px;
+  height: 26px;
+  border-width: 3px;
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+}
+
+.frameWrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  border-radius: 22px;
+}

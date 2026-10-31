@@ -9,12 +9,14 @@ import styles from "./MessageList.module.css";
 export function MessageList({
   messages,
   booting,
+  pending = false,
   disabled,
   onSend,
   onSave,
 }: {
   messages: ChatMessage[];
   booting: boolean;
+  pending?: boolean;
   disabled: boolean;
   onSend: (text: string) => void;
   onSave: () => void;
@@ -23,7 +25,7 @@ export function MessageList({
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
-  }, [messages, booting]);
+  }, [messages, booting, pending]);
 
   return (
     <div className={styles.list} data-testid="message-list">
@@ -47,6 +49,13 @@ export function MessageList({
             />
           ),
         )}
+        {pending ? (
+          <div className={styles.typing} aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </div>
+        ) : null}
         <div ref={endRef} />
       </div>
     </div>

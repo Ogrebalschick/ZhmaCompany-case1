@@ -13,6 +13,9 @@ export interface BannerDraft {
   actionType?: string | null;
   link?: string | null;
   cta?: string | null;
+  imageId?: string | null;
+  imageUrl?: string | null;
+  imageStatus?: string | null;
 }
 
 export interface EntityProposal {
@@ -42,6 +45,8 @@ export interface DraftCampaign {
   banner?: BannerDraft | null;
   pendingProposal?: EntityProposal | null;
   savedCampaignId?: number | null;
+  /** Состояние сохранённой кампании: DRAFT, ON_MODERATION, NEEDS_WORK, APPROVED, ACTIVE… */
+  knownState?: string | null;
 }
 
 export interface CampaignListItem {
@@ -52,10 +57,12 @@ export interface CampaignListItem {
   topic?: string | null;
   startDate: string;
   endDate?: string | null;
+  lastComment?: string | null;
 }
 
 export interface SegmentChoice {
   code: string;
+  name?: string;
   list: "included" | "excluded";
   type: string;
   count: number;
@@ -71,6 +78,10 @@ export interface PlaceChoice {
 export interface DraftChoices {
   segments?: SegmentChoice[];
   places?: PlaceChoice[];
+  reachMin?: number | null;
+  reachMax?: number | null;
+  /** Объяснение охвата от сервера: «от 400 тыс. до 42,4 млн, сегменты по ИЛИ». */
+  reachText?: string | null;
 }
 
 export interface CampaignDraftBlock {
@@ -81,9 +92,25 @@ export interface CampaignDraftBlock {
   choices?: DraftChoices;
 }
 
+export interface ReplyOption {
+  label: string;
+  value: string;
+  hint?: string | null;
+  recommended?: boolean;
+}
+
 export interface QuickRepliesBlock {
   type: "quick_replies";
+  /** Тексты, которые уходят сообщением. */
   options: string[];
+  /** Про какое поле вопрос: topic, segments, startDate, next, ask… */
+  field?: string | null;
+  question?: string | null;
+  /** Можно выбрать несколько вариантов: уходят одной строкой через запятую. */
+  multi?: boolean;
+  allowCustom?: boolean;
+  /** Подписи, подсказки и рекомендованный вариант. Если пусто — подписи = options. */
+  items?: ReplyOption[];
 }
 
 export interface EntityProposalBlock {
@@ -101,6 +128,26 @@ export interface CampaignListBlock {
   items: CampaignListItem[];
 }
 
+export interface ComplianceItem {
+  rule: string;
+  article: string;
+  status: "OK" | "INFO" | "WARN" | "FAIL" | string;
+  message: string;
+  fix?: string | null;
+  quote?: string | null;
+  source?: string;
+}
+
+/** Проверка баннера на закон «О рекламе» (38-ФЗ). */
+export interface ComplianceBlock {
+  type: "compliance";
+  report: {
+    verdict: "OK" | "WARN" | "FAIL" | string;
+    items: ComplianceItem[];
+    aiChecked?: boolean;
+  };
+}
+
 export interface WarningsBlock {
   type: "warnings";
   items: string[];
@@ -112,6 +159,7 @@ export type UiBlock =
   | EntityProposalBlock
   | CreativePreviewBlock
   | CampaignListBlock
+  | ComplianceBlock
   | WarningsBlock;
 
 /** Блок с провода: известный type или любой другой, который лента пропускает. */

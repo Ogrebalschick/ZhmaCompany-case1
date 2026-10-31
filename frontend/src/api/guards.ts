@@ -1,4 +1,5 @@
 import type {
+  ComplianceBlock,
   AssistantReply,
   BannerDraft,
   CampaignDraftBlock,
@@ -94,6 +95,7 @@ function asDraft(raw: Record<string, unknown>): DraftCampaign {
     initialCtr: asNumber(raw.initialCtr),
     creativeBrief: asString(raw.creativeBrief),
     savedCampaignId: asNumber(raw.savedCampaignId),
+    knownState: asString(raw.knownState),
   };
 }
 
@@ -107,6 +109,9 @@ function asBanner(raw: Record<string, unknown>): BannerDraft | null {
     actionType: asString(raw.actionType),
     link: asString(raw.link),
     cta: asString(raw.cta),
+    imageId: asString(raw.imageId),
+    imageUrl: asString(raw.imageUrl),
+    imageStatus: asString(raw.imageStatus),
   };
 }
 
@@ -133,6 +138,7 @@ function asSegmentChoice(value: unknown): SegmentChoice | null {
   if (typeof value.count !== "number" || !Number.isFinite(value.count)) return null;
   return {
     code: value.code,
+    name: typeof value.name === "string" ? value.name : undefined,
     list: value.list,
     type: value.type,
     count: value.count,
@@ -161,8 +167,9 @@ function asChoices(value: unknown): DraftChoices | undefined {
         return row ? [row] : [];
       })
     : [];
-  if (segments.length === 0 && places.length === 0) return undefined;
-  return { segments, places };
+  const reachText = typeof value.reachText === "string" ? value.reachText : null;
+  if (segments.length === 0 && places.length === 0 && !reachText) return undefined;
+  return { segments, places, reachText };
 }
 
 export function asCampaignDraft(block: IncomingBlock): CampaignDraftBlock | null {
@@ -179,7 +186,29 @@ export function asCampaignDraft(block: IncomingBlock): CampaignDraftBlock | null
 
 export function asQuickReplies(block: IncomingBlock): QuickRepliesBlock | null {
   if (block.type !== "quick_replies" || !Array.isArray(block.options)) return null;
-  return { type: "quick_replies", options: asStrings(block.options) };
+  const items = Array.isArray(block.items)
+    ? block.items.flatMap((item) => {
+        if (!isRecord(item) || typeof item.label !== "string" || typeof item.value !== "string")
+          return [];
+        return [
+          {
+            label: item.label,
+            value: item.value,
+            hint: asString(item.hint),
+            recommended: item.recommended === true,
+          },
+        ];
+      })
+    : [];
+  return {
+    type: "quick_replies",
+    options: asStrings(block.options),
+    field: asString(block.field),
+    question: asString(block.question),
+    multi: block.multi === true,
+    allowCustom: block.allowCustom !== false,
+    items,
+  };
 }
 
 export function asEntityProposal(block: IncomingBlock): EntityProposalBlock | null {
@@ -223,5 +252,33 @@ export function asCampaignItem(value: unknown): CampaignListItem | null {
     topic: asString(value.topic),
     startDate: value.startDate,
     endDate: asString(value.endDate),
+  };
+}
+
+export function asCompliance(block: IncomingBlock): ComplianceBlock | null {
+  if (block.type !== "compliance" || !isRecord(block.report)) return null;
+  const report = block.report;
+  if (typeof report.verdict !== "string" || !Array.isArray(report.items)) return null;
+  return {
+    type: "compliance",
+    report: {
+      verdict: report.verdict,
+      aiChecked: report.aiChecked === true,
+      items: report.items.flatMap((item) =>
+        isRecord(item) && typeof item.article === "string" && typeof item.message === "string"
+          ? [
+              {
+                rule: typeof item.rule === "string" ? item.rule : "",
+                article: item.article,
+                status: typeof item.status === "string" ? item.status : "INFO",
+                message: item.message,
+                fix: asString(item.fix),
+                quote: asString(item.quote),
+                source: typeof item.source === "string" ? item.source : "code",
+              },
+            ]
+          : [],
+      ),
+    },
   };
 }

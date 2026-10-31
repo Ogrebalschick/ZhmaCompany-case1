@@ -8,7 +8,10 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
@@ -20,6 +23,7 @@ import ru.zhma.campaign.ai.model.CampaignListItem
 import ru.zhma.campaign.ai.model.CatalogSnapshot
 import ru.zhma.campaign.ai.model.ChannelRef
 import ru.zhma.campaign.ai.model.DraftCampaign
+import ru.zhma.campaign.ai.model.HistoryItem
 import ru.zhma.campaign.ai.model.PlaceRef
 import ru.zhma.campaign.ai.model.SegmentRef
 import ru.zhma.campaign.ai.model.TagRef
@@ -185,7 +189,42 @@ fun listChannels() =
         ChannelDto(it[ChannelsTable.id], it[ChannelsTable.code], it[ChannelsTable.description])
     }
 
-fun listCampaignItems(): List<CampaignListItem> = CampaignsTable.selectAll().orderBy(CampaignsTable.id).map { it.toListItem() }
+fun listCampaignItems(): List<CampaignListItem> {
+    val comments =
+        AuditTable
+            .selectAll()
+            .where { AuditTable.action eq "DECLINE" }
+            .orderBy(AuditTable.id)
+            .mapNotNull { row -> row[AuditTable.campaignId]?.let { it to row[AuditTable.comment] } }
+            .toMap()
+    return CampaignsTable.selectAll().orderBy(CampaignsTable.id).map { it.toListItem().copy(lastComment = comments[it[CampaignsTable.id]]) }
+}
+
+/** Черновик из сохранённой кампании — чтобы поправить её в чате (например, после отклонения). */
+fun draftFromCampaign(id: Long): DraftCampaign {
+    val details = campaignDetails(id)
+    val banner = storedBanners(id).firstOrNull()
+    return DraftCampaign(
+        name = details.name,
+        marketingName = details.marketingName,
+        startDate = details.startDate,
+        startTime = details.startTime,
+        endDate = details.endDate,
+        endTime = details.endTime,
+        topic = details.topic,
+        tagIds = details.tags,
+        keywords = details.keywords,
+        audienceType = details.audienceType,
+        includedSegments = details.segments.included,
+        excludedSegments = details.segments.excluded,
+        placeIds = details.places,
+        weight = details.weight,
+        initialCtr = details.initialCtr,
+        banner = banner,
+        savedCampaignId = id,
+        knownState = details.state,
+    )
+}
 
 fun campaignDetails(id: Long): CampaignDetailsDto {
     val row = campaignRow(id)
@@ -288,11 +327,33 @@ fun applyCommit(
     draft: DraftCampaign,
     action: String,
     caller: Caller,
+    campaignId: Long? = null,
+    comment: String? = null,
 ): DraftCampaign {
+    if (action == "SHOW_AUDIT") return draft
+    if (action == "LOAD_CAMPAIGN") {
+        val id = campaignId ?: throw bad(ApiError("campaignId", "Не указана кампания", "campaignId"))
+        return draftFromCampaign(id)
+    }
+    if (action == "APPROVE" || action == "DECLINE") {
+        if (caller.role != "campaignModerator") throw roleForbidden()
+        val id = campaignId ?: throw bad(ApiError("campaignId", "Не указана кампания", "campaignId"))
+        if (action == "APPROVE") approve(id, caller.user) else decline(id, caller.user, comment)
+        return draft
+    }
     if (caller.role != "campaignManager") throw roleForbidden()
+    if (action == "STOP") {
+        stop(campaignId ?: draft.savedCampaignId ?: throw bad(ApiError("campaignId", "Не указана кампания", "campaignId")), caller.user)
+        return draft
+    }
+    if (action == "ACTIVATE") {
+        activate(campaignId ?: draft.savedCampaignId ?: throw bad(ApiError("campaignId", "Не указана кампания", "campaignId")), caller.user)
+        return draft
+    }
     return when (action) {
         "CREATE_TAG" -> createTag(draft, caller.user)
         "CREATE_PLACE" -> createPlace(draft, caller.user)
+        "CREATE_SEGMENT" -> createSegment(draft)
         "SAVE_CAMPAIGN" -> saveCampaign(draft, caller.user)
         "TO_MODERATION" -> {
             val id = draft.savedCampaignId ?: throw bad(ApiError("savedCampaignId", "Сначала сохраните кампанию", "savedCampaignId"))
@@ -386,6 +447,57 @@ fun activate(
     writeAudit(id, "CAMPAIGN", id, "ACTIVATE", null, actor, null)
 }
 
+/** Остановка показа: STOPPED и published=false. Данные кампании не удаляются. */
+fun stop(
+    id: Long,
+    actor: String,
+) {
+    val row = campaignRow(id)
+    if (row[CampaignsTable.state] !in setOf("ACTIVE", "ACTIVE_EDITING")) {
+        throw bad(ApiError("STOP_NOT_ALLOWED", "Остановить можно только активную кампанию", "state"))
+    }
+    CampaignsTable.update({ CampaignsTable.id eq id }) {
+        it[state] = "STOPPED"
+        it[published] = false
+        it[lastEditAuthor] = actor
+    }
+    writeAudit(id, "CAMPAIGN", id, "STOP", null, actor, null)
+}
+
+/** Журнал кампании человеческим текстом — для ответа в чате. */
+fun auditText(id: Long): String {
+    val row = campaignRow(id)
+    val entries = auditOf(id)
+    if (entries.isEmpty()) return "В журнале кампании «${row[CampaignsTable.name]}» пока пусто."
+    val lines =
+        entries.takeLast(15).joinToString("\n") { e ->
+            val what =
+                when (e.action) {
+                    "CREATE" -> "создание (${entityLabel(e.entity)})"
+                    "UPDATE" -> "правка (${entityLabel(e.entity)})"
+                    "TO_MODERATION" -> "отправлена на модерацию"
+                    "APPROVE" -> "одобрена"
+                    "DECLINE" -> "отклонена"
+                    "ACTIVATE" -> "запущена"
+                    "STOP" -> "показ остановлен"
+                    else -> e.action
+                }
+            "• ${e.at.replace('T', ' ').take(16)} · ${e.actor} — $what" + (e.comment?.let { ": «$it»" } ?: "")
+        }
+    return "Журнал кампании «${row[CampaignsTable.name]}» (№$id):\n$lines"
+}
+
+private fun entityLabel(entity: String): String =
+    when (entity) {
+        "CAMPAIGN" -> "кампания"
+        "SEGMENTS" -> "сегменты"
+        "BANNER" -> "баннер"
+        "CREATIVE" -> "креатив"
+        "TAG" -> "тег"
+        "PLACE" -> "место"
+        else -> entity.lowercase()
+    }
+
 fun createSession(id: String) {
     SessionsTable.insert {
         it[SessionsTable.id] = id
@@ -429,6 +541,35 @@ fun appendMessage(
         it[createdAt] = Instant.now().toString()
     }
 }
+
+/** Состояния, в которых кампания уже прошла модерацию: картинка отдаётся без водяного знака. */
+private val passedModeration = setOf("APPROVED", "ACTIVE", "ACTIVE_EDITING", "STOPPED")
+
+/** Прошла ли модерацию хоть одна кампания, в баннере которой эта картинка. */
+fun imageApproved(imageId: String): Boolean {
+    val campaignIds =
+        BannersTable
+            .selectAll()
+            .where { BannersTable.contentJson like "%$imageId%" }
+            .map { it[BannersTable.campaignId] }
+    if (campaignIds.isEmpty()) return false
+    return CampaignsTable
+        .selectAll()
+        .where { CampaignsTable.id inList campaignIds }
+        .any { it[CampaignsTable.state] in passedModeration }
+}
+
+fun loadHistory(
+    sessionId: String,
+    limit: Int,
+): List<HistoryItem> =
+    MessagesTable
+        .selectAll()
+        .where { MessagesTable.sessionId eq sessionId }
+        .orderBy(MessagesTable.id, SortOrder.DESC)
+        .limit(limit)
+        .map { HistoryItem(it[MessagesTable.role], it[MessagesTable.text]) }
+        .reversed()
 
 fun listMessages(sessionId: String): List<MessageDto> {
     if (!sessionExists(sessionId)) throw notFound("Сессия не найдена")
@@ -495,6 +636,31 @@ private fun createTag(
     return draft.copy(tagIds = (draft.tagIds + id).distinct(), pendingProposal = null)
 }
 
+/** Создаёт сегмент из предложения ассистента и ставит его в черновик вместо временных ближайших. */
+private fun createSegment(draft: DraftCampaign): DraftCampaign {
+    val proposal = draft.pendingProposal ?: throw bad(ApiError("pendingProposal", "Нет предложения сегмента", "pendingProposal"))
+    if (proposal.kind != "SEGMENT") throw bad(ApiError("kind", "Ожидалось предложение сегмента", "kind"))
+    val name = proposal.name.trim().ifEmpty { throw bad(ApiError("name", "Укажите имя сегмента", "name")) }
+    val existing = SegmentsTable.selectAll().where { SegmentsTable.name eq name }.singleOrNull()
+    val code =
+        existing?.get(SegmentsTable.code) ?: run {
+            val base = (proposal.code ?: "CUSTOM").uppercase().replace(Regex("[^A-Z0-9_]"), "_").take(40)
+            var candidate = base
+            var n = 2
+            while (SegmentsTable.selectAll().where { SegmentsTable.code eq candidate }.any()) candidate = "${base}_${n++}"
+            SegmentsTable.insert {
+                it[SegmentsTable.code] = candidate
+                it[SegmentsTable.name] = name
+                it[type] = proposal.segmentType ?: "BASIC"
+                it[state] = "ACTIVE"
+                it[count] = 0
+            }
+            candidate
+        }
+    val included = (draft.includedSegments - proposal.replaces.toSet() + code).distinct()
+    return draft.copy(includedSegments = included, audienceType = "SEGMENTED", pendingProposal = null)
+}
+
 private fun createPlace(
     draft: DraftCampaign,
     actor: String,
@@ -557,7 +723,7 @@ private fun saveCampaign(
     replaceLinks(id, draft)
     val banner = draft.banner
     if (banner != null) replaceBanner(id, banner, catalog, actor, draft.savedCampaignId != null)
-    return draft.copy(savedCampaignId = id, weight = weight, initialCtr = ctr)
+    return draft.copy(savedCampaignId = id, weight = weight, initialCtr = ctr, dirty = false)
 }
 
 private fun insertCampaign(
@@ -702,6 +868,7 @@ private fun replaceBanner(
             title = banner.title,
             text = banner.text,
             link = if (banner.actionType in linkActions) banner.link else null,
+            image = banner.imageUrl,
             button =
                 banner.cta
                     ?.trim()
@@ -773,6 +940,7 @@ private fun storedBanners(campaignId: Long): List<BannerDraft> {
             actionType = content.actionType,
             link = content.link,
             cta = content.button?.name,
+            imageUrl = content.image,
         )
     }
 }
@@ -803,6 +971,7 @@ private fun ResultRow.toListItem() =
         topic = this[CampaignsTable.topic],
         startDate = this[CampaignsTable.startDate],
         endDate = this[CampaignsTable.endDate],
+        author = this[CampaignsTable.author],
     )
 
 private fun writeAudit(

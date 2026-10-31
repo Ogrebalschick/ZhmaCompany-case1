@@ -1,5 +1,5 @@
 import { asCampaignDraft, asQuickReplies } from "../api/guards";
-import type { CampaignDraftBlock, ChatMessage } from "../api/types";
+import type { CampaignDraftBlock, ChatMessage, QuickRepliesBlock } from "../api/types";
 
 export function latestDraftBlock(messages: ChatMessage[]): CampaignDraftBlock | null {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -12,13 +12,10 @@ export function latestDraftBlock(messages: ChatMessage[]): CampaignDraftBlock | 
   return null;
 }
 
-export function latestQuickReplies(messages: ChatMessage[]): string[] {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (message.role !== "assistant") continue;
-    const block = (message.blocks ?? []).find((item) => item.type === "quick_replies");
-    if (!block) return [];
-    return asQuickReplies(block)?.options ?? [];
-  }
-  return [];
+/** Кнопки показываются только у последнего ответа ассистента и только в панели над полем ввода. */
+export function latestQuickReplies(messages: ChatMessage[]): QuickRepliesBlock | null {
+  const last = messages[messages.length - 1];
+  if (!last || last.role !== "assistant") return null;
+  const block = (last.blocks ?? []).find((item) => item.type === "quick_replies");
+  return block ? asQuickReplies(block) : null;
 }

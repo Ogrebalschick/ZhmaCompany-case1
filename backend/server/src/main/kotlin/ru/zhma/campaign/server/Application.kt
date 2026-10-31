@@ -22,21 +22,45 @@ import ru.zhma.campaign.server.http.ApiError
 import ru.zhma.campaign.server.http.ApiException
 import ru.zhma.campaign.server.http.ErrorResponse
 import ru.zhma.campaign.server.http.route.apiRoutes
+import ru.zhma.campaign.server.images.ImageJobs
 import ru.zhma.campaign.server.jobs.JobProcessor
 import ru.zhma.campaign.server.json.AppJson
+import ru.zhma.campaign.server.wiring.AppConfig
+import ru.zhma.campaign.server.wiring.imageClient
+import ru.zhma.campaign.server.wiring.imageTimeoutSec
+import java.io.File
 
 fun main() {
-    embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = Application::module).start(wait = true)
+    val port = AppConfig.backendPort
+    val log = org.slf4j.LoggerFactory.getLogger("campaign")
+    log.info(
+        "Сервер: http://localhost:{} | LLM: {} ({}) | картинки: {} ({})",
+        port,
+        if (AppConfig.bool("LLM_MOCK") == true) "заглушка (LLM_MOCK=true)" else AppConfig.llmBaseUrl ?: "заглушка",
+        AppConfig.llmModel ?: "-",
+        AppConfig.imageBaseUrl ?: "выкл",
+        AppConfig.get("IMAGE_MODEL") ?: "qwen-image-2.1",
+    )
+    embeddedServer(Netty, port = port, host = AppConfig.backendHost, module = Application::module).start(wait = true)
 }
 
-fun Application.module(dbPath: String = System.getProperty("campaign.db") ?: "data/campaigns.db") {
+fun Application.module(dbPath: String = System.getProperty("campaign.db") ?: AppConfig.get("DB_PATH") ?: "data/campaigns.db") {
     DatabaseFactory.init(dbPath)
-    val jobs = JobProcessor(CoroutineScope(SupervisorJob() + Dispatchers.IO))
+    ru.zhma.campaign.server.wiring.llmLogFile =
+        File(dbPath).absoluteFile.parentFile.resolve("llm.log")
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    val images =
+        imageClient()?.let { client ->
+            val dir = File(dbPath).absoluteFile.parentFile.resolve("images")
+            ImageJobs(client, dir, scope, imageTimeoutSec())
+        }
+    val jobs = JobProcessor(scope, images)
     monitor.subscribe(ApplicationStopped) { jobs.cancel() }
 
     install(ContentNegotiation) { json(AppJson) }
     install(CORS) {
-        allowHost("localhost:5173", schemes = listOf("http"))
+        allowHost("localhost:${AppConfig.frontendPort}", schemes = listOf("http"))
+        allowHost("127.0.0.1:${AppConfig.frontendPort}", schemes = listOf("http"))
         allowHeader(HttpHeaders.ContentType)
         allowHeader("X-User")
         allowHeader("X-Role")
@@ -64,5 +88,5 @@ fun Application.module(dbPath: String = System.getProperty("campaign.db") ?: "da
             }
         }
     }
-    routing { apiRoutes(jobs) }
+    routing { apiRoutes(jobs, images) }
 }

@@ -20,30 +20,26 @@
 
 ## Как запустить
 
-Живая модель, если заданы обе переменные. Иначе сервер берёт `MockLlmClient` и сеть не нужна. Ключ не обязателен: пустой `OPENAI_API_KEY` не отправляет `Authorization`.
+**Windows:** дважды щёлкните `start.bat` в корне. Скрипт:
+1. создаст `.env` из `.env.example`, если его нет;
+2. запустит сервер (`gradlew.bat :server:run`) в отдельном окне;
+3. при первом запуске сделает `npm install`;
+4. дождётся, пока сервер ответит (первая сборка — 2–5 минут), запустит экран и откроет браузер.
 
-```bat
-set OPENAI_BASE_URL=http://100.104.60.3:9292/v1
-set OPENAI_MODEL=qwen3.8-27b-fast
-cd backend
-gradlew.bat :server:run
-```
+Нужны JDK 17+ (`java` в PATH) и Node.js.
 
-На Unix те же переменные и `./gradlew :server:run`. База создаётся сама: `backend/data/campaigns.db`. При первом старте в неё попадают справочники. Исторические кампании 101–115 не загружаются.
+**Все настройки — в `.env` в корне** (образец с комментариями — `.env.example`):
+- `LLM_HOST`, `LLM_PORT`, `LLM_PATH` или `LLM_BASE_URL` целиком — адрес llama.cpp;
+- `LLM_MODEL` — основная модель, `IMAGE_MODEL` — модель картинок (адрес по умолчанию тот же, что у LLM);
+- `BACKEND_PORT`, `FRONTEND_PORT` — порты сервера и экрана;
+- `LLM_MOCK=true` — работать без модели.
 
-Фронт, прокси `/api` на `http://localhost:8080`. В разработке мок выключен (`frontend/.env.development`).
+Переменные окружения важнее файла. Сервер ищет `.env` от текущей папки вверх.
 
-```bat
-cd frontend
-npm install
-npm run dev
-```
+Вручную: `cd backend && gradlew.bat :server:run` (на Unix — `./gradlew :server:run`), затем `cd frontend && npm install && npm run dev`.
+Экран: `http://localhost:<FRONTEND_PORT>`.
 
-Экран: `http://localhost:5173`. Чтобы работать без сервера, в `frontend/.env.local` поставьте `VITE_USE_MOCK=true`.
-
-Один вызов модели ждёт до 45 секунд. Ход с двумя вызовами укладывается в 100 секунд ожидания job. Исключение переводит job в `FAILED` и не останавливает процесс. Картинки модель не рисует и не смотрит: превью баннера — вёрстка, файл картинки — одноцветный PNG.
-
-Выбор клиента: `backend/server/src/main/kotlin/ru/zhma/campaign/server/wiring/Clients.kt`, функция `llmClient()`.
+Если в чате ошибка 500 или «Жду, пока запустится сервер…» — сервер ещё не поднялся или упал: смотрите окно BACKEND.
 
 ## Как проверить
 

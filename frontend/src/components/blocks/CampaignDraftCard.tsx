@@ -1,16 +1,13 @@
 import type { CampaignDraftBlock } from "../../api/types";
+import type { SegmentChoice } from "../../api/types";
 import { formatPlaces, formatSegments, formatTags, topicLabel } from "../../labels/catalog";
 import {
   ALL_USERS_HINT,
   audienceLabel,
-  formatCampaignId,
-  formatMetric,
-  ctrHint,
   formatSchedule,
   orDash,
   placeReasons,
   segmentReasons,
-  weightHint,
 } from "../../labels/fields";
 import controls from "../../styles/controls.module.css";
 import { DraftField } from "./DraftField";
@@ -45,6 +42,9 @@ export function CampaignDraftCard({
       <header className={styles.header}>
         <h3>{draft.name?.trim() || "Черновик кампании"}</h3>
         <MissingList codes={block.missing} />
+        {block.choices?.reachText ? (
+          <p className={styles.reach}>{block.choices.reachText}</p>
+        ) : null}
       </header>
       <dl className={styles.fields}>
         <DraftField
@@ -53,13 +53,6 @@ export function CampaignDraftCard({
           value={orDash(draft.name)}
           flashToken={flashToken}
           flash={flashKeys.includes("name")}
-        />
-        <DraftField
-          fieldKey="marketingName"
-          label="Маркетинговое имя"
-          value={orDash(draft.marketingName)}
-          flashToken={flashToken}
-          flash={flashKeys.includes("marketingName")}
         />
         <DraftField
           fieldKey="start"
@@ -93,7 +86,7 @@ export function CampaignDraftCard({
         <DraftField
           fieldKey="included"
           label="Сегменты включения"
-          value={formatSegments(draft.includedSegments)}
+          value={segmentNames(segments, "included", draft.includedSegments)}
           hint={segmentReasons(segments, "included", draft.includedSegments)}
           flashToken={flashToken}
           flash={flashKeys.includes("included")}
@@ -101,7 +94,7 @@ export function CampaignDraftCard({
         <DraftField
           fieldKey="excluded"
           label="Сегменты исключения"
-          value={formatSegments(draft.excludedSegments)}
+          value={segmentNames(segments, "excluded", draft.excludedSegments)}
           hint={segmentReasons(segments, "excluded", draft.excludedSegments)}
           flashToken={flashToken}
           flash={flashKeys.includes("excluded")}
@@ -123,29 +116,6 @@ export function CampaignDraftCard({
             flash={flashKeys.includes("tags")}
           />
         ) : null}
-        <DraftField
-          fieldKey="weight"
-          label="Вес"
-          value={formatMetric(draft.weight)}
-          hint={weightHint(draft.weight, draft.initialCtr)}
-          flashToken={flashToken}
-          flash={flashKeys.includes("weight")}
-        />
-        <DraftField
-          fieldKey="ctr"
-          label="Начальный CTR"
-          value={formatMetric(draft.initialCtr)}
-          hint={ctrHint(draft.weight, draft.initialCtr)}
-          flashToken={flashToken}
-          flash={flashKeys.includes("ctr")}
-        />
-        <DraftField
-          fieldKey="id"
-          label="ID кампании"
-          value={formatCampaignId(draft.savedCampaignId)}
-          flashToken={flashToken}
-          flash={flashKeys.includes("id")}
-        />
       </dl>
       {block.readyToSave ? (
         <button
@@ -160,4 +130,21 @@ export function CampaignDraftCard({
       ) : null}
     </section>
   );
+}
+
+/** Имена сегментов из ответа сервера (там есть и созданные в чате); коды справочника не показываем. */
+function segmentNames(
+  choices: SegmentChoice[] | undefined,
+  list: "included" | "excluded",
+  codes: string[] | undefined,
+): string {
+  if (!codes || codes.length === 0) return "—";
+  if (!choices) return formatSegments(codes);
+  return codes
+    .map(
+      (code) =>
+        choices.find((item) => item.code === code && item.list === list)?.name ??
+        formatSegments([code]),
+    )
+    .join(", ");
 }

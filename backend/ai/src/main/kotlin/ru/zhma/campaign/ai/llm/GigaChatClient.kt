@@ -19,6 +19,8 @@ class GigaChatClient(
             baseUrl = System.getenv("GIGACHAT_BASE_URL") ?: "https://gigachatai.ru/v1",
             model = System.getenv("GIGACHAT_MODEL") ?: "gigachat-pro",
             token = token,
+            disableThinking = false,
+            tools = false,
         )
 
     override suspend fun chat(

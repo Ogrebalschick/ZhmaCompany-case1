@@ -20,15 +20,27 @@ object EntityResolver {
         val notes = mutableListOf<String>()
         val suggestions = mutableListOf<String>()
 
-        val included = resolveSegments(draft.includedSegments, patch.segmentQuery, catalog, notes, suggestions)
+        val unknown = mutableListOf<String>()
+        val included = resolveSegments(draft.includedSegments, patch.segmentQuery, catalog, notes, suggestions, unknown)
         val excluded = draft.excludedSegments.filter { code -> catalog.segments.any { it.code == code } }
 
         val places = resolvePlaces(draft, patch, catalog, notes, suggestions)
         val tags = resolveTags(draft, patch, catalog, notes)
+        val segmentProposal =
+            unknown.lastOrNull()?.let { q ->
+                EntityProposal(
+                    kind = "SEGMENT",
+                    name = q.replaceFirstChar { it.uppercase() },
+                    code = "CUSTOM_" + slug(q).uppercase().take(30),
+                    description = q,
+                    segmentType = "INTEREST",
+                )
+            }
         val proposal =
             when {
                 places.proposal != null -> places.proposal
                 tags.proposal != null -> tags.proposal
+                segmentProposal != null -> segmentProposal
                 patch.placeQuery != null || patch.tagQuery != null -> null
                 else -> draft.pendingProposal
             }
@@ -53,6 +65,7 @@ object EntityResolver {
         catalog: CatalogSnapshot,
         notes: MutableList<String>,
         suggestions: MutableList<String>,
+        unknown: MutableList<String>,
     ): List<String> {
         val known =
             codes
@@ -74,6 +87,9 @@ object EntityResolver {
                 if (exact.code !in known) known += exact.code
             } else {
                 notes += "Сегмента «$q» нет в справочнике."
+                // Возраст разбирает код (TextExtractor) — отдельный «сегмент» под него от модели не создаём.
+                val looksLikeAge = Regex("""\d|возраст|лет(?!\p{L})""", RegexOption.IGNORE_CASE).containsMatchIn(q)
+                if (q.length in 3..40 && !looksLikeAge) unknown += q
                 suggestions += suggestSegments(q, catalog)
             }
         }

@@ -44,6 +44,8 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    // Тесты не читают .env из корня: всегда модель-заглушка и без картинок.
+    systemProperty("app.env.file", "none")
     maxParallelForks = 1
     maxHeapSize = "256m"
     outputs.upToDateWhen { false }

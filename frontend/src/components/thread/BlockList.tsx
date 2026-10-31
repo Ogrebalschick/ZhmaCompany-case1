@@ -1,6 +1,7 @@
 import {
   asCampaignDraft,
   asCampaignList,
+  asCompliance,
   asCreativePreview,
   asEntityProposal,
   asQuickReplies,
@@ -9,9 +10,9 @@ import {
 import type { CampaignDraftBlock, IncomingBlock } from "../../api/types";
 import { DraftChangeNote } from "../blocks/DraftChangeNote";
 import { CampaignList } from "../blocks/CampaignList";
+import { ComplianceCard } from "../blocks/ComplianceCard";
 import { CreativePreview } from "../blocks/CreativePreview";
 import { EntityProposalCard } from "../blocks/EntityProposalCard";
-import { QuickReplies } from "../blocks/QuickReplies";
 import { UnknownBlock } from "../blocks/UnknownBlock";
 import { WarningsBanner } from "../blocks/WarningsBanner";
 import styles from "./BlockList.module.css";
@@ -46,12 +47,8 @@ export function BlockList({
             />
           );
         }
-        const replies = asQuickReplies(block);
-        if (replies) {
-          return (
-            <QuickReplies key={key} options={replies.options} disabled={disabled} onSend={onSend} />
-          );
-        }
+        // Кнопки ответа рисует панель над полем ввода, в ленте они не дублируются.
+        if (asQuickReplies(block)) return null;
         const proposal = asEntityProposal(block);
         if (proposal) {
           return (
@@ -65,6 +62,8 @@ export function BlockList({
         }
         const creative = asCreativePreview(block);
         if (creative) return <CreativePreview key={key} banner={creative.banner} />;
+        const compliance = asCompliance(block);
+        if (compliance) return <ComplianceCard key={key} report={compliance.report} />;
         const list = asCampaignList(block);
         if (list) return <CampaignList key={key} items={list.items} />;
         const warnings = asWarnings(block);

@@ -64,7 +64,8 @@ object CampaignValidator {
             .filter { it.state != "ACTIVE" }
             .forEach { _ -> warnings += "Место показа выключено" }
 
-        if (draft.tagIds.isEmpty()) warnings += "У кампании нет тегов"
+        if (draft.tagIds.isEmpty()) warnings += "Нет тегов — можно добавить: «укажи тег»"
+        warnings += segmentWarnings(draft, catalog)
 
         draft.banner?.let { banner -> problems += bannerProblems(banner, catalog) }
 
@@ -103,6 +104,39 @@ object CampaignValidator {
         if (forbidsLink && !banner.link.isNullOrBlank()) problems += "Для этого действия ссылка запрещена."
         return problems
     }
+
+    /** Странные сочетания сегментов: не блокируют сохранение, но объясняют, что не так. */
+    private fun segmentWarnings(
+        draft: DraftCampaign,
+        catalog: CatalogSnapshot,
+    ): List<String> {
+        val out = mutableListOf<String>()
+        val included = draft.includedSegments.toSet()
+        if ("MALE" in included && "FEMALE" in included) {
+            out += "Мужской и женский пол вместе — это почти все пользователи: сегмент по полу можно убрать"
+        }
+        (included intersect draft.excludedSegments.toSet()).forEach { code ->
+            out += "Сегмент ${catalog.segments.find { it.code == code }?.name ?: code} одновременно включён и исключён"
+        }
+        draft.includedSegments
+            .mapNotNull { code -> catalog.segments.find { it.code == code } }
+            .filter { it.count in 1 until SMALL_SEGMENT }
+            .forEach { out += "Сегмент «${it.name}» маленький (${Questions.humanCount(it.count)}) — охват будет низким" }
+        val types =
+            draft.includedSegments
+                .mapNotNull { code -> catalog.segments.find { it.code == code } }
+                .groupBy { it.type }
+        if (types.size >= 2) {
+            out += "Сегменты складываются по ИЛИ: покажем всем, кто подходит хотя бы под один"
+        }
+        val unsubscribed = catalog.segments.find { it.code == "EXC_UNSUBSCRIBED" && it.state == "ACTIVE" }
+        if (unsubscribed != null && draft.audienceType == "SEGMENTED" && unsubscribed.code !in draft.excludedSegments) {
+            out += "Совет: исключите тех, кто отписался от рекламы"
+        }
+        return out
+    }
+
+    private const val SMALL_SEGMENT = 500_000L
 
     private fun validDate(value: String?): Boolean = value != null && runCatching { LocalDate.parse(value) }.isSuccess
 

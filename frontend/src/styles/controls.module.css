@@ -1,8 +1,16 @@
 .primary,
 .quiet {
-  border-radius: 999px;
-  padding: 10px 16px;
+  border-radius: 12px;
+  padding: 10px 18px;
   font-weight: 600;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--accent-dark);
 }
 
 .primary {
