@@ -1,0 +1,14 @@
+.note {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.note h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.note p {
+  margin: 0;
+}

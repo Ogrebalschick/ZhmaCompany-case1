@@ -6,6 +6,20 @@
   border-top: 1px solid var(--line);
 }
 
+.flash {
+  animation: field-flash 1s ease forwards;
+}
+
+@keyframes field-flash {
+  0%,
+  70% {
+    background: var(--accent-soft);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
 .field dt {
   color: var(--muted);
 }

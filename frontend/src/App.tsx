@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createChatClient, usesMock } from "./api/createClient";
 import { CONFIRM_TEXT } from "./chat/phrases";
 import { useChat } from "./chat/useChat";
@@ -13,6 +13,15 @@ export function App() {
   const client = useMemo(() => createChatClient(), []);
   const chat = useChat(client);
   const inputLocked = chat.pending || chat.booting || !chat.sessionId;
+  const [wide, setWide] = useState(() => window.matchMedia("(min-width: 761px)").matches);
+  const [railWidth, setRailWidth] = useState(460);
+
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 761px)");
+    const apply = () => setWide(query.matches);
+    query.addEventListener("change", apply);
+    return () => query.removeEventListener("change", apply);
+  }, []);
 
   return (
     <AppShell
@@ -40,6 +49,8 @@ export function App() {
         </>
       }
       rail={<DraftRail block={chat.draftBlock} disabled={inputLocked} onSave={() => chat.send(CONFIRM_TEXT)} />}
+      railWidth={wide ? railWidth : null}
+      onRailWidth={setRailWidth}
     />
   );
 }

@@ -63,6 +63,89 @@ export function topicCodeFromText(text: string): "LIFESTYLE" | "EVENT" | null {
   return null;
 }
 
+export const WEIGHT_OFFER = "вес 10";
+
+export function utcToday(now = new Date()): string {
+  return now.toISOString().slice(0, 10);
+}
+
+export function weightFromText(text: string): number | null {
+  const match = text.match(/вес\s*(\d+)/);
+  return match ? Number(match[1]) : null;
+}
+
+export function ctrFromText(text: string): number | null {
+  const match = text.match(/ctr\s*(\d+)/);
+  return match ? Number(match[1]) : null;
+}
+
+export function isWideReach(text: string): boolean {
+  return text.includes("широкий охват");
+}
+
+function addUtcDays(iso: string, days: number): string {
+  const [year, month, day] = iso.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
+export function resolveSchedule(
+  text: string,
+  today: string,
+  current: { startDate?: string | null; endDate?: string | null },
+): { startDate: string | null; endDate: string | null; notes: string[]; touched: boolean } {
+  const lower = text.toLowerCase();
+  const iso = text.match(/\d{4}-\d{2}-\d{2}/);
+  const tomorrow = lower.includes("завтра");
+  const twoWeeks = /на\s*2\s*недел/.test(lower) || lower.includes("на две недели");
+  const yearEnd = lower.includes("до конца года");
+  const notes: string[] = [];
+  let start = current.startDate ?? null;
+  let end = current.endDate ?? null;
+  let touched = false;
+  if (!iso && !tomorrow && !twoWeeks && !yearEnd) return { startDate: start, endDate: end, notes, touched };
+
+  if (iso) {
+    if (iso[0] < today) notes.push("Дата начала не раньше сегодня. Её не записал.");
+    else {
+      start = iso[0];
+      touched = true;
+    }
+  } else if (tomorrow) {
+    start = addUtcDays(today, 1);
+    touched = true;
+  }
+
+  if (twoWeeks) {
+    if (!start) start = today;
+    end = addUtcDays(start, 14);
+    touched = true;
+  }
+
+  if (yearEnd) {
+    const nextEnd = `${today.slice(0, 4)}-12-31`;
+    if (start && nextEnd < start) notes.push("Конец раньше начала. Его не записал.");
+    else {
+      end = nextEnd;
+      touched = true;
+    }
+  }
+
+  if (start && end && end < start) {
+    notes.push("Конец раньше начала. Его не записал.");
+    end = current.endDate ?? null;
+  }
+
+  return { startDate: start, endDate: end, notes, touched };
+}
+
+export function applyServerMetrics(draft: DraftCampaign): DraftCampaign {
+  return {
+    ...draft,
+    weight: draft.weight ?? 0,
+    initialCtr: draft.initialCtr ?? 15,
+  };
+}
+
 export function incompleteDraft(): DraftCampaign {
   return {
     name: "Вклад для Москвы",

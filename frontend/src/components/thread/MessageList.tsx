@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import type { ChatMessage } from "../../api/types";
+import { asCampaignDraft } from "../../api/guards";
+import type { CampaignDraftBlock, ChatMessage } from "../../api/types";
 import { AssistantMessage } from "./AssistantMessage";
 import { EmptyThread } from "./EmptyThread";
 import { UserMessage } from "./UserMessage";
@@ -37,6 +38,7 @@ export function MessageList({
               key={`${message.role}-${index}`}
               text={message.text}
               blocks={message.blocks}
+              previousDraft={previousDraft(messages, index)}
               disabled={disabled}
               onSend={onSend}
               onSave={onSave}
@@ -47,4 +49,15 @@ export function MessageList({
       </div>
     </div>
   );
+}
+
+function previousDraft(messages: ChatMessage[], index: number): CampaignDraftBlock | null {
+  for (let messageIndex = index - 1; messageIndex >= 0; messageIndex -= 1) {
+    const blocks = messages[messageIndex].blocks ?? [];
+    for (let blockIndex = blocks.length - 1; blockIndex >= 0; blockIndex -= 1) {
+      const draft = asCampaignDraft(blocks[blockIndex]);
+      if (draft) return draft;
+    }
+  }
+  return null;
 }

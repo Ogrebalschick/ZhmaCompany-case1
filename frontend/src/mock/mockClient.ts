@@ -7,7 +7,9 @@ import {
   MOCK_SESSION_ID,
   TOPIC_EVENT_REPLY,
   TOPIC_LIFESTYLE_REPLY,
+  WEIGHT_OFFER,
   ageCodeFromText,
+  applyServerMetrics,
   campaignListReply,
   CITY_MSK_REASON,
   FEMALE_REASON,
@@ -20,14 +22,19 @@ import {
   isOwnBrief,
   ownBriefDraft,
   ownMissing,
+  ctrFromText,
+  isWideReach,
   placeProposal,
   readyDraft,
+  resolveSchedule,
   savedDraft,
   smartBanner,
   storyBanner,
   tagProposal,
   topicCodeFromText,
+  utcToday,
   warningsReply,
+  weightFromText,
 } from "./fixtures";
 
 type Phase = "empty" | "incomplete" | "ready" | "saved";
@@ -143,10 +150,12 @@ export class MockChatClient implements ChatClient {
 
   private confirm(): AssistantReply {
     if (this.phase === "ready" || this.phase === "saved") {
+      const serverNote = serverMetricNote(this.draft);
       this.phase = "saved";
-      this.draft = this.kind === "own" ? { ...this.draft, savedCampaignId: 201 } : savedDraft();
+      const saved = this.kind === "own" ? { ...this.draft, savedCampaignId: 201 } : savedDraft();
+      this.draft = applyServerMetrics(saved);
       return {
-        text: "Кампания сохранена. Идентификатор 201.",
+        text: `Кампания сохранена. Идентификатор 201.${serverNote}`,
         blocks: this.draftBlocks([], true),
       };
     }
@@ -175,9 +184,14 @@ export class MockChatClient implements ChatClient {
     const lower = text.trim().toLowerCase();
     const age = ageCodeFromText(lower);
     const topic = topicCodeFromText(lower);
-    const date = text.match(/\d{4}-\d{2}-\d{2}/);
     const time = text.match(/(?:^|[^\d])(\d{2}:\d{2})/);
-    if (!age && !topic && !date && !time) return null;
+    const schedule = resolveSchedule(text, utcToday(), this.draft);
+    const weight = weightFromText(lower);
+    const ctr = ctrFromText(lower);
+    const reach = isWideReach(lower) && weight === null;
+    if (!age && !topic && !time && !schedule.touched && schedule.notes.length === 0 && weight === null && ctr === null && !reach) {
+      return null;
+    }
 
     let segments = [...(this.draft.includedSegments ?? [])];
     if (age) {
@@ -188,11 +202,23 @@ export class MockChatClient implements ChatClient {
       ...this.draft,
       includedSegments: segments,
       topic: topic ?? this.draft.topic,
-      startDate: date ? date[0] : this.draft.startDate,
+      startDate: schedule.touched || schedule.notes.length > 0 ? schedule.startDate : this.draft.startDate,
+      endDate: schedule.touched || schedule.notes.length > 0 ? schedule.endDate : this.draft.endDate,
       startTime: time ? time[1] : this.draft.startTime,
+      weight: weight ?? this.draft.weight,
+      initialCtr: ctr ?? this.draft.initialCtr,
     };
     this.phase = "incomplete";
-    return this.ownReply();
+    const reply = this.ownReply();
+    let message = schedule.notes.length > 0 ? `${schedule.notes.join(" ")} ${reply.text}` : reply.text;
+    if (reach && this.draft.weight == null) {
+      const hasButtons = reply.blocks.some((block) => block.type === "quick_replies");
+      message = hasButtons
+        ? `${message} Широкий охват сам вес не ставит. Предлагаю вес 10. Напишите «вес 10».`
+        : `${message} Широкий охват сам вес не ставит. Предлагаю вес 10.`;
+      if (!hasButtons) reply.blocks.push({ type: "quick_replies", options: [WEIGHT_OFFER] });
+    }
+    return { ...reply, text: message };
   }
 
   private ownReply(): AssistantReply {
@@ -200,7 +226,7 @@ export class MockChatClient implements ChatClient {
     const blocks = this.draftBlocks(current ? [current] : [], false);
     if (current === "startDate") {
       return {
-        text: `Собрал черновик «Баня и аквапарк» для женщин в Москве, место показа — промо на главном. ${FEMALE_REASON}. ${CITY_MSK_REASON}. ${PLACE_MAIN_REASON}. Напишите дату начала в виде ГГГГ-ММ-ДД. Сам её не поставлю.`,
+        text: `Собрал черновик «Баня и аквапарк» для женщин в Москве, место показа — промо на главном. ${FEMALE_REASON}. ${CITY_MSK_REASON}. ${PLACE_MAIN_REASON}. Напишите дату начала в виде ГГГГ-ММ-ДД. Понятны «с завтра», «на две недели» и «до конца года». Сам дату не выдумаю.`,
         blocks,
       };
     }
@@ -256,4 +282,12 @@ export class MockChatClient implements ChatClient {
   private ready(): boolean {
     return this.phase === "ready" || this.phase === "saved";
   }
+}
+
+function serverMetricNote(draft: DraftCampaign): string {
+  const parts: string[] = [];
+  if (draft.weight == null) parts.push("вес 0");
+  if (draft.initialCtr == null) parts.push("CTR 15");
+  if (parts.length === 0) return "";
+  return ` Сервер записал ${parts.join(" и ")}, в черновике этого не было.`;
 }

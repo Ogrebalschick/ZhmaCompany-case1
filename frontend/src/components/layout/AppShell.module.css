@@ -9,7 +9,34 @@
 .body {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: minmax(0, 1fr) 460px;
+}
+
+.railSlot {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+}
+
+.handle {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 8px;
+  margin: 0;
+  padding: 0;
+  transform: translateX(-4px);
+  border: 0;
+  background: transparent;
+  cursor: col-resize;
+}
+
+.handle:hover,
+.handle:focus-visible {
+  background: var(--accent);
 }
 
 .thread {
@@ -24,5 +51,9 @@
   .body {
     grid-template-columns: 1fr;
     grid-template-rows: minmax(112px, 26vh) minmax(0, 1fr);
+  }
+
+  .handle {
+    display: none;
   }
 }

@@ -2,7 +2,7 @@
 
 Один экран: шапка с ролью, лента ответов ассистента и поле ввода. Сервер и промпты живут отдельно.
 
-Обновлено: под сегментом и местом вторая строка из `choices`. Число клиентов, тип и состояние фронт не выдумывает.
+Обновлено: в ленте короткое резюме черновика, полная таблица только справа. Новое поле справа подсвечивается на секунду, ширину колонки можно потянуть.
 
 Статус: экран чата готов на локальных ответах. `npm run dev` в этой папке открывает `http://localhost:5173`. Следующая правка, если она понадобится, стыкует тот же клиент с живым `POST /api/sessions` (выключить мок через `.env.local`).
 
@@ -63,7 +63,7 @@ VITE_USE_MOCK=false
 
 Под сегментом строка `GEO_CITY, 13 000 000, ACTIVE`. Под местом `ACTIVE, баннер по умолчанию STORY`. При `defaultBanner: null` — `ACTIVE, баннера по умолчанию нет`. При `audienceType: ALL_USERS` под аудиторией фиксированная фраза экрана: «Списки включённых и исключённых должны быть пустыми».
 
-Коды `missing`: `name`, `startDate`, `startTime`, `topic`, `audienceType`, `places`, `segments`. Пустые поля показываются как «—», вес и CTR не подставляются.
+Коды `missing`: `name`, `startDate`, `startTime`, `topic`, `audienceType`, `places`, `segments`. Пустые поля показываются как «—». Пустые вес и CTR тоже прочерк, не ноль. Если пусты оба, под весом строка: «Если не задать, при сохранении сервер поставит вес 0 и CTR 15». Если пуст только один, подсказка называет только его. Это подпись экрана: в `draft.weight` и `draft.initialCtr` нули от неё не появляются. Кнопка `вес 10` шлёт этот текст как обычную реплику.
 
 Пока job `PENDING`, поле заблокировано и виден статус «Собираю ответ». Опрос раз в секунду, не дольше 45 попыток. `FAILED` и ошибка сети пишутся в ленту как сообщение ассистента. Если сессия не открылась, шапка пишет «Сессия не создана», а поле остаётся закрытым.
 
@@ -72,7 +72,8 @@ VITE_USE_MOCK=false
 Включён, если `VITE_USE_MOCK=true` (так в `.env.development`). Класс `MockChatClient`, сессия `mock-session`. Первый опрос job — `PENDING`, второй — `DONE` или `FAILED`.
 
 - фраза с «вклад» и «москв» — черновик, `readyToSave: false`, `missing: ["startTime"]`. В тексте причина: Москва, `GEO_CITY`, 13 000 000, `ACTIVE`, и место 1 с баннером `STORY`. В `choices` ещё возраст 26–45 и исключение `EXC_UNSUBSCRIBED`
-- фраза с «баня» или «аквапарк» и «женщин» или «старше 35» — черновик «Баня и аквапарк»: `FEMALE`, `CITY_MSK`, место `1`, без даты, времени, темы и возраста. Первый ответ называет женский пол (`GENDER`, 42 000 000, `ACTIVE`), Москву и место 1. В `missing` только один текущий код, по порядку `startDate`, `startTime`, `topic`, `segments`. Дата и время без кнопок, из реплики копируются `YYYY-MM-DD` и `HH:mm`. Тема — кнопки `LIFESTYLE` и `EVENT`. Возраст — `AGE_26_45` и `AGE_46_60`, в тексте тип `AGE` и число клиентов. После выбора возраста в карточке появляется строка `AGE`. Пока дыры есть, `подтверждаю` не сохраняет и не подменяет черновик вкладом
+- фраза с «баня» или «аквапарк» и «женщин» или «старше 35» — черновик «Баня и аквапарк»: `FEMALE`, `CITY_MSK`, место `1`, без даты, времени, темы и возраста. Первый ответ называет женский пол (`GENDER`, 42 000 000, `ACTIVE`), Москву и место 1. В `missing` только один текущий код, по порядку `startDate`, `startTime`, `topic`, `segments`. Дата и время без кнопок. Из реплики копируются `YYYY-MM-DD` и `HH:mm`. «С завтра» ставит начало на следующий день, «на 2 недели» и «на две недели» — конец через 14 дней от начала, а если начала нет, начало сегодня. «До конца года» ставит конец `YYYY-12-31`. Дата раньше сегодня и конец раньше начала не записываются. Фраза без даты начало не заполняет. Тема — кнопки `LIFESTYLE` и `EVENT`. Возраст — `AGE_26_45` и `AGE_46_60`. Пока дыры есть, `подтверждаю` не сохраняет и не подменяет черновик вкладом
+- «широкий охват» вес не пишет и предлагает 10. Кнопка `вес 10` есть на шаге даты, времени и собранного черновика. На шаге темы и возраста кнопки справочника остаются, в тексте сказано написать `вес 10`. `вес N` записывает вес, `ctr N` записывает CTR. «подтверждаю» согласием на вес не считается. При появлении `savedCampaignId` пустой вес становится 0, пустой CTR — 15, текст говорит, что числа записал сервер. Бриф про вклад свои даты не пересчитывает
 - `choices` мок собирает сам по кодам черновика. Факты есть у `FEMALE`, `CITY_MSK`, `AGE_26_45`, `AGE_46_60`, `EXC_UNSUBSCRIBED` и мест 1, 4, 8. Другой код остаётся без второй строки. Если место `INACTIVE`, к ответу добавляется `warnings` «Место показа выключено», `readyToSave` не снимается. Текущие брифы используют место 1, поэтому плашки у них нет
 - ровно `подтверждаю` на готовом черновике вклада — время `10:00` и кнопка сохранения; повторное подтверждение ставит `savedCampaignId: 201`. На собранном своём брифе то же сохранение, но поля бани остаются
 - ровно `отмена` — текст, что предложение снято, черновик без изменений
@@ -103,15 +104,15 @@ VITE_USE_MOCK=false
 - `frontend/src/api/headers.ts` — `X-User` и `X-Role`
 - `frontend/src/api/guards.ts` — разбор JSON и проверка `type`
 - `frontend/src/api/errors.ts` — текст ошибки сети
-- `frontend/src/mock/fixtures.ts` — черновик вклада, черновик бани, узнавание фраз, коды возраста и темы, факты `choices`
+- `frontend/src/mock/fixtures.ts` — черновик вклада, черновик бани, узнавание фраз, коды возраста и темы, факты `choices`, расчёт дат и веса
 - `frontend/src/mock/mockClient.ts` — сессия, job из двух опросов, ветки вклада и своего брифа
 - `frontend/src/chat/useChat.ts` — сессия, отправка, опрос
 - `frontend/src/chat/selectors.ts` — последний черновик и последние быстрые ответы
 - `frontend/src/chat/phrases.ts` — `подтверждаю`, `отмена`, логин, две стартовые фразы (`OWN_BRIEF`, `STARTER_BRIEF`)
-- `frontend/src/labels/fields.ts` — подписи полей, аудитории, `missing` и строки причины из `choices`
+- `frontend/src/labels/fields.ts` — подписи полей, аудитории, `missing`, строки причины из `choices` и подсказка про вес 0 и CTR 15
 - `frontend/src/labels/states.ts` — ярлык того же `state` и отдельно `published`
 - `frontend/src/labels/catalog.ts` — имена сегментов, мест, тегов и подпись кнопки `replyLabel`
-- `frontend/src/components/layout/AppShell.tsx` — колонки
+- `frontend/src/components/layout/AppShell.tsx` — колонки, стартовая ширина черновика 460px и ручка изменения ширины
 - `frontend/src/components/layout/HeaderBar.tsx` — пользователь и сессия
 - `frontend/src/components/layout/RoleSelect.tsx` — две роли
 - `frontend/src/components/thread/MessageList.tsx` — прокрутка ленты
@@ -122,7 +123,9 @@ VITE_USE_MOCK=false
 - `frontend/src/components/composer/Composer.tsx` — Enter и Shift+Enter
 - `frontend/src/components/composer/PendingStatus.tsx` — «Собираю ответ»
 - `frontend/src/components/composer/QuickReplyBar.tsx` — те же ответы над полем
-- `frontend/src/components/blocks/CampaignDraftCard.tsx` — поля черновика и «Сохранить»
+- `frontend/src/components/blocks/CampaignDraftCard.tsx` — полная таблица черновика справа
+- `frontend/src/components/blocks/DraftChangeNote.tsx` — в ленте имя, что изменилось, что осталось, «Сохранить»
+- `frontend/src/labels/draftRows.ts` — сравнение полей соседних черновиков
 - `frontend/src/components/blocks/DraftField.tsx` — строка поля и необязательная вторая строка
 - `frontend/src/components/blocks/MissingList.tsx` — «осталось уточнить»
 - `frontend/src/components/blocks/QuickReplies.tsx` — подпись кнопки из справочника, отправка исходной строки
@@ -144,7 +147,7 @@ VITE_USE_MOCK=false
 - Форма JSON и новый `type`: `frontend/src/api/types.ts`, `frontend/src/api/guards.ts`, `frontend/src/components/thread/BlockList.tsx`
 - HTTP и ошибка сети: `frontend/src/api/httpClient.ts`, `frontend/src/api/errors.ts`
 - Фразы мока и свой бриф: `frontend/src/mock/mockClient.ts`, `frontend/src/mock/fixtures.ts`, `frontend/src/chat/phrases.ts`, `frontend/src/components/thread/EmptyThread.tsx`
-- Карточка черновика, `choices` и «Сохранить»: `frontend/src/components/blocks/CampaignDraftCard.tsx`, `frontend/src/components/blocks/DraftField.tsx`, `frontend/src/labels/fields.ts`, `frontend/src/api/types.ts`, `frontend/src/api/guards.ts`, `frontend/src/components/blocks/MissingList.tsx`, `frontend/src/components/draft/DraftRail.tsx`
+- Карточка черновика, `choices` и «Сохранить»: `frontend/src/components/blocks/CampaignDraftCard.tsx`, `frontend/src/components/blocks/DraftChangeNote.tsx`, `frontend/src/components/blocks/DraftField.tsx`, `frontend/src/labels/draftRows.ts`, `frontend/src/labels/fields.ts`, `frontend/src/api/types.ts`, `frontend/src/api/guards.ts`, `frontend/src/components/blocks/MissingList.tsx`, `frontend/src/components/draft/DraftRail.tsx`, `frontend/src/components/layout/AppShell.tsx`
 - Подписи полей и статусов: `frontend/src/labels/fields.ts`, `frontend/src/labels/states.ts`, `frontend/src/labels/catalog.ts`
 - Превью баннера: `frontend/src/components/blocks/CreativePreview.tsx`, `frontend/src/components/blocks/StoryFrame.tsx`, `frontend/src/components/blocks/SmartBannerFrame.tsx`
 - Быстрые ответы: `frontend/src/components/blocks/QuickReplies.tsx`, `frontend/src/labels/catalog.ts`, `frontend/src/components/composer/QuickReplyBar.tsx`, `frontend/src/chat/selectors.ts`
@@ -153,10 +156,18 @@ VITE_USE_MOCK=false
 
 ## Стыковка с агентом, сервером и LLM
 
-Экран уже рисует причину. Остальным слоям нужно положить те же поля в блок сообщения. Новый `type` не нужен.
+Экран уже рисует причину. Остальным слоям нужно положить те же поля в блок сообщения. Новый `type` не нужен. Отдельное поле «что изменилось» присылать не нужно: лента и подсветка справа сравнивают соседние блоки `campaign_draft`.
 
 **Агент.** После выбора кодов в `EntityResolver` кладёт `choices` в блок `campaign_draft` из снимка каталога. Сегмент: `code`, `list`, `type`, `count`, `state`. Место: `id`, `state`, `defaultBanner`. Имя сегмента и описание места фронт уже показывает сам. Число, тип и состояние он не додумает: нет записи в `choices` — нет второй строки. В текст ответа кладётся та же причина словами справочника, например «Москва, GEO_CITY, 13 000 000, ACTIVE» и «главный экран, место 1, баннер по умолчанию STORY». Модель эти числа не назначает. Место `INACTIVE` добавляет блок `warnings` со строкой «Место показа выключено» и не снимает `readyToSave`. Для `ALL_USERS` оба списка сегментов пустые, и текст ответа прямо это говорит. Для `SEGMENTED` без хотя бы одного `ACTIVE` во включении в `missing` остаётся `segments`.
 
 **LLM.** `choices`, `count`, `type`, `state` и id места не заполняет. В патч по-прежнему можно положить `segmentQuery`, `placeQuery` или `tagQuery`, если строки нет в каталоге. Короткий текст «почему так» собирается только из строк, которые автомат уже передал в вопрос. Иначе модель объяснит сегмент, которого нет.
 
 **Сервер.** Отдельная таблица причин не нужна. `choices` живёт в JSON сообщения сессии рядом с блоком и в таблицу кампании не пишется. При `SAVE_CAMPAIGN` сохраняются `includedSegments`, `excludedSegments` и `placeIds`. Каталог для автомата по-прежнему целиком уходит в `TurnInput` из базы. Job тот же: реплика, автомат, при пустом `commit` — сохранить черновик сессии.
+
+Даты и охват стыкуются так же, без нового `type`.
+
+**Агент.** Относительную дату считает код от `today` в `TurnInput`. «С завтра» — следующий день, «на 2 недели» — конец через 14 дней от начала, если начала нет, начало равно `today`. «До конца года» — `YYYY-12-31`. Фраза без даты оставляет `startDate` пустым. Время берётся только из явного `HH:mm`, иначе в `missing` остаётся `startTime`. Начало не раньше `today`, конец не раньше начала: такие значения в черновик не пишутся, в тексте короткая причина. «Широкий охват» не кладёт вес в патч. В тексте предложение 10, кнопка `quick_replies` шлёт строку `вес 10`, не «подтверждаю». `вес N` и `ctr N` записывают названное число. В черновик 0 и 15 сами не подставляются.
+
+**LLM.** В схеме `intent` даты вида «на 2 недели», «с завтра» и «до конца года» остаются null: их посчитает код. Вес и CTR остаются null, если во фразе нет цифры или согласия на уже названное число. Модель не ставит 0 и 15 за менеджера.
+
+**Сервер.** `today` в `TurnInput` — текущая дата UTC `YYYY-MM-DD`. При `SAVE_CAMPAIGN` null-вес становится 0, null-CTR становится 15. В аудит пишется уже это сохранённое значение, чтобы было видно, что число пришло от сервера. До сохранения в ответе клиенту вес и CTR остаются null, фронт показывает прочерк и подпись.
