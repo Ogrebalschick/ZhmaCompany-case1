@@ -2,21 +2,31 @@ import type { ChatClient } from "../api/client";
 import type { AssistantReply, ChatMessage, DraftCampaign, JobView, RequestContext, SendAccepted } from "../api/types";
 import { CANCEL_TEXT, CONFIRM_TEXT } from "../chat/phrases";
 import {
+  AGE_26_REPLY,
+  AGE_46_REPLY,
   MOCK_SESSION_ID,
+  TOPIC_EVENT_REPLY,
+  TOPIC_LIFESTYLE_REPLY,
+  ageCodeFromText,
   campaignListReply,
   draftBlock,
   incompleteDraft,
   isDepositMoscowBrief,
+  isOwnBrief,
+  ownBriefDraft,
+  ownMissing,
   placeProposal,
   readyDraft,
   savedDraft,
   smartBanner,
   storyBanner,
   tagProposal,
+  topicCodeFromText,
   warningsReply,
 } from "./fixtures";
 
 type Phase = "empty" | "incomplete" | "ready" | "saved";
+type DraftKind = "none" | "deposit" | "own";
 
 interface MockJob {
   seen: number;
@@ -26,6 +36,7 @@ interface MockJob {
 
 export class MockChatClient implements ChatClient {
   private phase: Phase = "empty";
+  private kind: DraftKind = "none";
   private draft: DraftCampaign = {};
   private jobs = new Map<string, MockJob>();
   private seq = 0;
@@ -62,13 +73,24 @@ export class MockChatClient implements ChatClient {
     const lower = text.trim().toLowerCase();
     if (lower === CONFIRM_TEXT) return this.confirm();
     if (lower === CANCEL_TEXT) return this.cancel();
+    if (isOwnBrief(lower)) {
+      this.kind = "own";
+      this.phase = "incomplete";
+      this.draft = ownBriefDraft();
+      return this.ownReply();
+    }
     if (isDepositMoscowBrief(lower)) {
+      this.kind = "deposit";
       this.phase = "incomplete";
       this.draft = incompleteDraft();
       return {
         text: "Собрал черновик кампании по вкладу для Москвы. Осталось уточнить время начала. Отправьте «подтверждаю», чтобы поставить 10:00 и открыть сохранение.",
         blocks: [draftBlock(this.draft, ["startTime"], false)],
       };
+    }
+    if (this.kind === "own") {
+      const followUp = this.applyOwnDetails(text);
+      if (followUp) return followUp;
     }
     if (lower.includes("неизвестн")) {
       return {
@@ -117,17 +139,84 @@ export class MockChatClient implements ChatClient {
   private confirm(): AssistantReply {
     if (this.phase === "ready" || this.phase === "saved") {
       this.phase = "saved";
-      this.draft = savedDraft();
+      this.draft = this.kind === "own" ? { ...this.draft, savedCampaignId: 201 } : savedDraft();
       return {
         text: "Кампания сохранена. Идентификатор 201.",
         blocks: [draftBlock(this.draft, [], true)],
       };
     }
+    if (this.kind === "own") {
+      const missing = ownMissing(this.draft);
+      if (missing.length > 0) {
+        const reply = this.ownReply();
+        return { ...reply, text: `Сохранять пока рано. ${reply.text}` };
+      }
+      this.phase = "ready";
+      return {
+        text: "Черновик готов к сохранению. Проверьте поля и нажмите «Сохранить».",
+        blocks: [draftBlock(this.draft, [], true)],
+      };
+    }
+    this.kind = "deposit";
     this.phase = "ready";
     this.draft = readyDraft();
     return {
       text: "Черновик готов к сохранению. Проверьте поля и нажмите «Сохранить».",
       blocks: [draftBlock(this.draft, [], true)],
+    };
+  }
+
+  private applyOwnDetails(text: string): AssistantReply | null {
+    const lower = text.trim().toLowerCase();
+    const age = ageCodeFromText(lower);
+    const topic = topicCodeFromText(lower);
+    const date = text.match(/\d{4}-\d{2}-\d{2}/);
+    const time = text.match(/(?:^|[^\d])(\d{2}:\d{2})/);
+    if (!age && !topic && !date && !time) return null;
+
+    let segments = [...(this.draft.includedSegments ?? [])];
+    if (age) {
+      segments = segments.filter((code) => code !== "AGE_26_45" && code !== "AGE_46_60");
+      segments.push(age);
+    }
+    const aged = segments.includes("AGE_26_45") || segments.includes("AGE_46_60");
+    this.draft = {
+      ...this.draft,
+      includedSegments: segments,
+      topic: aged && topic ? topic : this.draft.topic,
+      startDate: date ? date[0] : this.draft.startDate,
+      startTime: time ? time[1] : this.draft.startTime,
+    };
+    this.phase = "incomplete";
+    return this.ownReply();
+  }
+
+  private ownReply(): AssistantReply {
+    const missing = ownMissing(this.draft);
+    const blocks: AssistantReply["blocks"] = [draftBlock(this.draft, missing, false)];
+    if (missing.includes("segments")) {
+      blocks.push({ type: "quick_replies", options: [AGE_46_REPLY, AGE_26_REPLY] });
+      return {
+        text: "Собрал черновик «Баня и аквапарк» для женщин в Москве, место показа — промо на главном. Возраст «старше 35» лежит между сегментами 26–45 и 46–60, поэтому код не выбираю. Темы «аквапарк» в справочнике нет, дату и время тоже не подставляю.",
+        blocks,
+      };
+    }
+    if (missing.includes("topic")) {
+      blocks.push({ type: "quick_replies", options: [TOPIC_LIFESTYLE_REPLY, TOPIC_EVENT_REPLY] });
+      return {
+        text: "Возраст записан. Темы «аквапарк» в справочнике нет. Подойдёт образ жизни или событие?",
+        blocks,
+      };
+    }
+    if (missing.includes("startDate") || missing.includes("startTime")) {
+      return {
+        text: "Тема записана. Напишите дату начала в виде ГГГГ-ММ-ДД и время ЧЧ:ММ. Сам их не поставлю.",
+        blocks,
+      };
+    }
+    return {
+      text: "Обязательные поля собраны. Отправьте «подтверждаю», чтобы открыть сохранение.",
+      blocks,
     };
   }
 
@@ -139,7 +228,9 @@ export class MockChatClient implements ChatClient {
   }
 
   private missing(): string[] {
-    return this.phase === "incomplete" ? ["startTime"] : [];
+    if (this.phase !== "incomplete") return [];
+    if (this.kind === "own") return ownMissing(this.draft);
+    return ["startTime"];
   }
 
   private ready(): boolean {

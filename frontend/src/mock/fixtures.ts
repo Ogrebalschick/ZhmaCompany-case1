@@ -2,8 +2,65 @@ import type { AssistantReply, BannerDraft, DraftCampaign, EntityProposal, Incomi
 
 export const MOCK_SESSION_ID = "mock-session";
 
+export const AGE_46_REPLY = "Возраст 46–60";
+export const AGE_26_REPLY = "Возраст 26–45";
+export const TOPIC_LIFESTYLE_REPLY = "Образ жизни";
+export const TOPIC_EVENT_REPLY = "Событие";
+
 export function isDepositMoscowBrief(text: string): boolean {
   return text.includes("вклад") && text.includes("москв");
+}
+
+export function isOwnBrief(text: string): boolean {
+  const leisure = text.includes("аквапарк") || text.includes("баня");
+  const women = text.includes("женщин") || text.includes("старше 35");
+  return leisure && women;
+}
+
+export function ownBriefDraft(): DraftCampaign {
+  return {
+    name: "Баня и аквапарк",
+    marketingName: "Баня и аквапарк",
+    startDate: null,
+    startTime: null,
+    endDate: null,
+    endTime: null,
+    topic: null,
+    tagIds: [],
+    keywords: null,
+    audienceType: "SEGMENTED",
+    includedSegments: ["FEMALE", "CITY_MSK"],
+    excludedSegments: [],
+    placeIds: [1],
+    weight: null,
+    initialCtr: null,
+    creativeBrief: null,
+    banner: null,
+    pendingProposal: null,
+    savedCampaignId: null,
+  };
+}
+
+export function ownMissing(draft: DraftCampaign): string[] {
+  const segments = draft.includedSegments ?? [];
+  const missing: string[] = [];
+  if (!segments.includes("AGE_26_45") && !segments.includes("AGE_46_60")) missing.push("segments");
+  if (!draft.topic) missing.push("topic");
+  if (!draft.startDate) missing.push("startDate");
+  if (!draft.startTime) missing.push("startTime");
+  return missing;
+}
+
+export function ageCodeFromText(text: string): "AGE_46_60" | "AGE_26_45" | null {
+  if (text.includes("age_46_60") || text.includes("46–60") || text.includes("46-60")) return "AGE_46_60";
+  if (text.includes("age_26_45") || text.includes("26–45") || text.includes("26-45")) return "AGE_26_45";
+  return null;
+}
+
+export function topicCodeFromText(text: string): "LIFESTYLE" | "EVENT" | null {
+  if (text.includes("lifestyle") || text.includes("образ жизни")) return "LIFESTYLE";
+  if (text.includes("event") || text.includes("событ")) return "EVENT";
+  return null;
 }
 
 export function incompleteDraft(): DraftCampaign {
