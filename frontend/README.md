@@ -2,7 +2,7 @@
 
 Один экран: шапка с ролью, лента ответов ассистента и поле ввода. Сервер и промпты живут отдельно.
 
-Обновлено: свой бриф задаёт один пробел за раз. Кнопки справочника показывают подпись, а в чат уходит код.
+Обновлено: под сегментом и местом вторая строка из `choices`. Число клиентов, тип и состояние фронт не выдумывает.
 
 Статус: экран чата готов на локальных ответах. `npm run dev` в этой папке открывает `http://localhost:5173`. Следующая правка, если она понадобится, стыкует тот же клиент с живым `POST /api/sessions` (выключить мок через `.env.local`).
 
@@ -37,13 +37,31 @@ VITE_USE_MOCK=false
 
 `result`: `{ text, blocks }`. У блока есть `type`:
 
-- `campaign_draft` — `draft`, `missing: string[]`, `readyToSave`. Кнопка «Сохранить» только при `readyToSave`, шлёт `подтверждаю`.
+- `campaign_draft` — `draft`, `missing: string[]`, `readyToSave`, необязательный `choices`. Кнопка «Сохранить» только при `readyToSave`, шлёт `подтверждаю`. Коды сегментов и id мест остаются в `draft`. `choices` объясняет уже выбранные коды и в кампанию не сохраняется.
 - `quick_replies` — `options: string[]`. Клик шлёт строку как есть. Если это код сегмента, темы или id места, на кнопке подпись из справочника, например «Возраст 46–60 (AGE_46_60)», а уходит `AGE_46_60`. Незнакомая строка пишется на кнопке целиком. Над полем только кнопки последнего ответа. Пока job в `PENDING`, они заблокированы.
 - `entity_proposal` — `proposal: { kind, name, code, description }`. `TAG` — «Создать тег», `PLACE` — «Создать место». Кнопки шлют `подтверждаю` и `отмена`.
 - `creative_preview` — `banner`. `STORY` узкая рамка, иначе широкая. Текст рисует вёрстка, не картинка.
 - `campaign_list` — `items` с именем, `state`, датами и отдельным признаком `published`.
 - `warnings` — жёлтые строки, ввод не блокируют.
 - любой другой `type` — компонент ничего не рисует, текст сообщения остаётся.
+
+`choices.segments[]`: `code`, `list` (`included` или `excluded`), `type`, `count`, `state`. `choices.places[]`: `id`, `state` (`ACTIVE` или `INACTIVE`), `defaultBanner` (строка или `null`). Запись без любого из этих полей отбрасывается, остальные строки и черновик остаются. Если `choices` нет или код в него не попал, под полем остаётся только имя и код.
+
+Пример:
+
+```json
+"choices": {
+  "segments": [
+    { "code": "FEMALE", "list": "included", "type": "GENDER", "count": 42000000, "state": "ACTIVE" },
+    { "code": "CITY_MSK", "list": "included", "type": "GEO_CITY", "count": 13000000, "state": "ACTIVE" }
+  ],
+  "places": [
+    { "id": 1, "state": "ACTIVE", "defaultBanner": "STORY" }
+  ]
+}
+```
+
+Под сегментом строка `GEO_CITY, 13 000 000, ACTIVE`. Под местом `ACTIVE, баннер по умолчанию STORY`. При `defaultBanner: null` — `ACTIVE, баннера по умолчанию нет`. При `audienceType: ALL_USERS` под аудиторией фиксированная фраза экрана: «Списки включённых и исключённых должны быть пустыми».
 
 Коды `missing`: `name`, `startDate`, `startTime`, `topic`, `audienceType`, `places`, `segments`. Пустые поля показываются как «—», вес и CTR не подставляются.
 
@@ -53,8 +71,9 @@ VITE_USE_MOCK=false
 
 Включён, если `VITE_USE_MOCK=true` (так в `.env.development`). Класс `MockChatClient`, сессия `mock-session`. Первый опрос job — `PENDING`, второй — `DONE` или `FAILED`.
 
-- фраза с «вклад» и «москв» — черновик, `readyToSave: false`, `missing: ["startTime"]`
-- фраза с «баня» или «аквапарк» и «женщин» или «старше 35» — черновик «Баня и аквапарк»: `FEMALE`, `CITY_MSK`, место `1`, без даты, времени, темы и возраста. В `missing` только один текущий код, по порядку `startDate`, `startTime`, `topic`, `segments`. Дата и время без кнопок, из реплики копируются `YYYY-MM-DD` и `HH:mm`. Тема — кнопки `LIFESTYLE` и `EVENT`. Возраст — `AGE_26_45` и `AGE_46_60`, в тексте тип `AGE` и число клиентов. Пока дыры есть, `подтверждаю` не сохраняет и не подменяет черновик вкладом
+- фраза с «вклад» и «москв» — черновик, `readyToSave: false`, `missing: ["startTime"]`. В тексте причина: Москва, `GEO_CITY`, 13 000 000, `ACTIVE`, и место 1 с баннером `STORY`. В `choices` ещё возраст 26–45 и исключение `EXC_UNSUBSCRIBED`
+- фраза с «баня» или «аквапарк» и «женщин» или «старше 35» — черновик «Баня и аквапарк»: `FEMALE`, `CITY_MSK`, место `1`, без даты, времени, темы и возраста. Первый ответ называет женский пол (`GENDER`, 42 000 000, `ACTIVE`), Москву и место 1. В `missing` только один текущий код, по порядку `startDate`, `startTime`, `topic`, `segments`. Дата и время без кнопок, из реплики копируются `YYYY-MM-DD` и `HH:mm`. Тема — кнопки `LIFESTYLE` и `EVENT`. Возраст — `AGE_26_45` и `AGE_46_60`, в тексте тип `AGE` и число клиентов. После выбора возраста в карточке появляется строка `AGE`. Пока дыры есть, `подтверждаю` не сохраняет и не подменяет черновик вкладом
+- `choices` мок собирает сам по кодам черновика. Факты есть у `FEMALE`, `CITY_MSK`, `AGE_26_45`, `AGE_46_60`, `EXC_UNSUBSCRIBED` и мест 1, 4, 8. Другой код остаётся без второй строки. Если место `INACTIVE`, к ответу добавляется `warnings` «Место показа выключено», `readyToSave` не снимается. Текущие брифы используют место 1, поэтому плашки у них нет
 - ровно `подтверждаю` на готовом черновике вклада — время `10:00` и кнопка сохранения; повторное подтверждение ставит `savedCampaignId: 201`. На собранном своём брифе то же сохранение, но поля бани остаются
 - ровно `отмена` — текст, что предложение снято, черновик без изменений
 - `ошибка` — на втором опросе `FAILED`
@@ -84,12 +103,12 @@ VITE_USE_MOCK=false
 - `frontend/src/api/headers.ts` — `X-User` и `X-Role`
 - `frontend/src/api/guards.ts` — разбор JSON и проверка `type`
 - `frontend/src/api/errors.ts` — текст ошибки сети
-- `frontend/src/mock/fixtures.ts` — черновик вклада, черновик бани, узнавание фраз, коды возраста и темы
+- `frontend/src/mock/fixtures.ts` — черновик вклада, черновик бани, узнавание фраз, коды возраста и темы, факты `choices`
 - `frontend/src/mock/mockClient.ts` — сессия, job из двух опросов, ветки вклада и своего брифа
 - `frontend/src/chat/useChat.ts` — сессия, отправка, опрос
 - `frontend/src/chat/selectors.ts` — последний черновик и последние быстрые ответы
 - `frontend/src/chat/phrases.ts` — `подтверждаю`, `отмена`, логин, две стартовые фразы (`OWN_BRIEF`, `STARTER_BRIEF`)
-- `frontend/src/labels/fields.ts` — подписи полей, аудитории и `missing`
+- `frontend/src/labels/fields.ts` — подписи полей, аудитории, `missing` и строки причины из `choices`
 - `frontend/src/labels/states.ts` — ярлык того же `state` и отдельно `published`
 - `frontend/src/labels/catalog.ts` — имена сегментов, мест, тегов и подпись кнопки `replyLabel`
 - `frontend/src/components/layout/AppShell.tsx` — колонки
@@ -104,7 +123,7 @@ VITE_USE_MOCK=false
 - `frontend/src/components/composer/PendingStatus.tsx` — «Собираю ответ»
 - `frontend/src/components/composer/QuickReplyBar.tsx` — те же ответы над полем
 - `frontend/src/components/blocks/CampaignDraftCard.tsx` — поля черновика и «Сохранить»
-- `frontend/src/components/blocks/DraftField.tsx` — одна строка поля
+- `frontend/src/components/blocks/DraftField.tsx` — строка поля и необязательная вторая строка
 - `frontend/src/components/blocks/MissingList.tsx` — «осталось уточнить»
 - `frontend/src/components/blocks/QuickReplies.tsx` — подпись кнопки из справочника, отправка исходной строки
 - `frontend/src/components/blocks/EntityProposalCard.tsx` — тег или место
@@ -125,9 +144,19 @@ VITE_USE_MOCK=false
 - Форма JSON и новый `type`: `frontend/src/api/types.ts`, `frontend/src/api/guards.ts`, `frontend/src/components/thread/BlockList.tsx`
 - HTTP и ошибка сети: `frontend/src/api/httpClient.ts`, `frontend/src/api/errors.ts`
 - Фразы мока и свой бриф: `frontend/src/mock/mockClient.ts`, `frontend/src/mock/fixtures.ts`, `frontend/src/chat/phrases.ts`, `frontend/src/components/thread/EmptyThread.tsx`
-- Карточка черновика и «Сохранить»: `frontend/src/components/blocks/CampaignDraftCard.tsx`, `frontend/src/components/blocks/MissingList.tsx`, `frontend/src/components/draft/DraftRail.tsx`
+- Карточка черновика, `choices` и «Сохранить»: `frontend/src/components/blocks/CampaignDraftCard.tsx`, `frontend/src/components/blocks/DraftField.tsx`, `frontend/src/labels/fields.ts`, `frontend/src/api/types.ts`, `frontend/src/api/guards.ts`, `frontend/src/components/blocks/MissingList.tsx`, `frontend/src/components/draft/DraftRail.tsx`
 - Подписи полей и статусов: `frontend/src/labels/fields.ts`, `frontend/src/labels/states.ts`, `frontend/src/labels/catalog.ts`
 - Превью баннера: `frontend/src/components/blocks/CreativePreview.tsx`, `frontend/src/components/blocks/StoryFrame.tsx`, `frontend/src/components/blocks/SmartBannerFrame.tsx`
 - Быстрые ответы: `frontend/src/components/blocks/QuickReplies.tsx`, `frontend/src/labels/catalog.ts`, `frontend/src/components/composer/QuickReplyBar.tsx`, `frontend/src/chat/selectors.ts`
 - Цвета и страница: `frontend/src/styles/global.css`, `frontend/src/components/layout/AppShell.tsx`
 - Сборка экрана: `frontend/src/App.tsx`
+
+## Стыковка с агентом, сервером и LLM
+
+Экран уже рисует причину. Остальным слоям нужно положить те же поля в блок сообщения. Новый `type` не нужен.
+
+**Агент.** После выбора кодов в `EntityResolver` кладёт `choices` в блок `campaign_draft` из снимка каталога. Сегмент: `code`, `list`, `type`, `count`, `state`. Место: `id`, `state`, `defaultBanner`. Имя сегмента и описание места фронт уже показывает сам. Число, тип и состояние он не додумает: нет записи в `choices` — нет второй строки. В текст ответа кладётся та же причина словами справочника, например «Москва, GEO_CITY, 13 000 000, ACTIVE» и «главный экран, место 1, баннер по умолчанию STORY». Модель эти числа не назначает. Место `INACTIVE` добавляет блок `warnings` со строкой «Место показа выключено» и не снимает `readyToSave`. Для `ALL_USERS` оба списка сегментов пустые, и текст ответа прямо это говорит. Для `SEGMENTED` без хотя бы одного `ACTIVE` во включении в `missing` остаётся `segments`.
+
+**LLM.** `choices`, `count`, `type`, `state` и id места не заполняет. В патч по-прежнему можно положить `segmentQuery`, `placeQuery` или `tagQuery`, если строки нет в каталоге. Короткий текст «почему так» собирается только из строк, которые автомат уже передал в вопрос. Иначе модель объяснит сегмент, которого нет.
+
+**Сервер.** Отдельная таблица причин не нужна. `choices` живёт в JSON сообщения сессии рядом с блоком и в таблицу кампании не пишется. При `SAVE_CAMPAIGN` сохраняются `includedSegments`, `excludedSegments` и `placeIds`. Каталог для автомата по-прежнему целиком уходит в `TurnInput` из базы. Job тот же: реплика, автомат, при пустом `commit` — сохранить черновик сессии.

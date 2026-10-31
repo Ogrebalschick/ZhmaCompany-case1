@@ -1,5 +1,5 @@
 import type { ChatClient } from "../api/client";
-import type { AssistantReply, ChatMessage, DraftCampaign, JobView, RequestContext, SendAccepted } from "../api/types";
+import type { AssistantReply, ChatMessage, DraftCampaign, IncomingBlock, JobView, RequestContext, SendAccepted } from "../api/types";
 import { CANCEL_TEXT, CONFIRM_TEXT } from "../chat/phrases";
 import {
   AGE_26_REPLY,
@@ -9,6 +9,11 @@ import {
   TOPIC_LIFESTYLE_REPLY,
   ageCodeFromText,
   campaignListReply,
+  CITY_MSK_REASON,
+  FEMALE_REASON,
+  INACTIVE_PLACE_WARNING,
+  PLACE_MAIN_REASON,
+  choicesFor,
   draftBlock,
   incompleteDraft,
   isDepositMoscowBrief,
@@ -84,8 +89,8 @@ export class MockChatClient implements ChatClient {
       this.phase = "incomplete";
       this.draft = incompleteDraft();
       return {
-        text: "Собрал черновик кампании по вкладу для Москвы. Осталось уточнить время начала. Отправьте «подтверждаю», чтобы поставить 10:00 и открыть сохранение.",
-        blocks: [draftBlock(this.draft, ["startTime"], false)],
+        text: `Собрал черновик кампании по вкладу для Москвы. ${CITY_MSK_REASON}. ${PLACE_MAIN_REASON}. Осталось уточнить время начала. Отправьте «подтверждаю», чтобы поставить 10:00 и открыть сохранение.`,
+        blocks: this.draftBlocks(["startTime"], false),
       };
     }
     if (this.kind === "own") {
@@ -142,7 +147,7 @@ export class MockChatClient implements ChatClient {
       this.draft = this.kind === "own" ? { ...this.draft, savedCampaignId: 201 } : savedDraft();
       return {
         text: "Кампания сохранена. Идентификатор 201.",
-        blocks: [draftBlock(this.draft, [], true)],
+        blocks: this.draftBlocks([], true),
       };
     }
     if (this.kind === "own") {
@@ -154,7 +159,7 @@ export class MockChatClient implements ChatClient {
       this.phase = "ready";
       return {
         text: "Черновик готов к сохранению. Проверьте поля и нажмите «Сохранить».",
-        blocks: [draftBlock(this.draft, [], true)],
+        blocks: this.draftBlocks([], true),
       };
     }
     this.kind = "deposit";
@@ -162,7 +167,7 @@ export class MockChatClient implements ChatClient {
     this.draft = readyDraft();
     return {
       text: "Черновик готов к сохранению. Проверьте поля и нажмите «Сохранить».",
-      blocks: [draftBlock(this.draft, [], true)],
+      blocks: this.draftBlocks([], true),
     };
   }
 
@@ -192,10 +197,10 @@ export class MockChatClient implements ChatClient {
 
   private ownReply(): AssistantReply {
     const current = ownMissing(this.draft)[0];
-    const blocks: AssistantReply["blocks"] = [draftBlock(this.draft, current ? [current] : [], false)];
+    const blocks = this.draftBlocks(current ? [current] : [], false);
     if (current === "startDate") {
       return {
-        text: "Собрал черновик «Баня и аквапарк» для женщин в Москве, место показа — промо на главном. Напишите дату начала в виде ГГГГ-ММ-ДД. Сам её не поставлю.",
+        text: `Собрал черновик «Баня и аквапарк» для женщин в Москве, место показа — промо на главном. ${FEMALE_REASON}. ${CITY_MSK_REASON}. ${PLACE_MAIN_REASON}. Напишите дату начала в виде ГГГГ-ММ-ДД. Сам её не поставлю.`,
         blocks,
       };
     }
@@ -228,8 +233,15 @@ export class MockChatClient implements ChatClient {
   private cancel(): AssistantReply {
     return {
       text: "Предложение снято. Черновик кампании остался как был.",
-      blocks: this.phase === "empty" ? [] : [draftBlock(this.draft, this.missing(), this.ready())],
+      blocks: this.phase === "empty" ? [] : this.draftBlocks(this.missing(), this.ready()),
     };
+  }
+
+  private draftBlocks(missing: string[], readyToSave: boolean): IncomingBlock[] {
+    const blocks: IncomingBlock[] = [draftBlock(this.draft, missing, readyToSave)];
+    const inactive = choicesFor(this.draft)?.places?.some((place) => place.state === "INACTIVE");
+    if (inactive) blocks.push({ type: "warnings", items: [INACTIVE_PLACE_WARNING] });
+    return blocks;
   }
 
   private missing(): string[] {

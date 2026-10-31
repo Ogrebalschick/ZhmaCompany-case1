@@ -15,6 +15,14 @@
   overflow-wrap: anywhere;
 }
 
+.hint {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  white-space: pre-line;
+}
+
 @media (max-width: 640px) {
   .field {
     grid-template-columns: 1fr;

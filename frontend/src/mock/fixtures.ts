@@ -1,4 +1,4 @@
-import type { AssistantReply, BannerDraft, DraftCampaign, EntityProposal, IncomingBlock } from "../api/types";
+import type { AssistantReply, BannerDraft, DraftCampaign, DraftChoices, EntityProposal, IncomingBlock } from "../api/types";
 
 export const MOCK_SESSION_ID = "mock-session";
 
@@ -95,8 +95,47 @@ export function savedDraft(): DraftCampaign {
   return { ...readyDraft(), savedCampaignId: 201 };
 }
 
+const SEGMENT_FACTS: Record<string, { type: string; count: number; state: string }> = {
+  FEMALE: { type: "GENDER", count: 42_000_000, state: "ACTIVE" },
+  CITY_MSK: { type: "GEO_CITY", count: 13_000_000, state: "ACTIVE" },
+  AGE_26_45: { type: "AGE", count: 24_000_000, state: "ACTIVE" },
+  AGE_46_60: { type: "AGE", count: 18_000_000, state: "ACTIVE" },
+  EXC_UNSUBSCRIBED: { type: "BASIC", count: 15_000_000, state: "ACTIVE" },
+};
+
+const PLACE_FACTS: Record<number, { state: string; defaultBanner: string | null }> = {
+  1: { state: "ACTIVE", defaultBanner: "STORY" },
+  4: { state: "INACTIVE", defaultBanner: "STORY" },
+  8: { state: "INACTIVE", defaultBanner: "SMART_BANNER" },
+};
+
+export const CITY_MSK_REASON = "Москва, GEO_CITY, 13 000 000, ACTIVE";
+export const FEMALE_REASON = "Женский пол, GENDER, 42 000 000, ACTIVE";
+export const PLACE_MAIN_REASON = "Главный экран, место 1, баннер по умолчанию STORY";
+export const INACTIVE_PLACE_WARNING = "Место показа выключено";
+
+export function choicesFor(draft: DraftCampaign): DraftChoices | undefined {
+  const segments = [
+    ...(draft.includedSegments ?? []).flatMap((code) => {
+      const fact = SEGMENT_FACTS[code];
+      return fact ? [{ code, list: "included" as const, ...fact }] : [];
+    }),
+    ...(draft.excludedSegments ?? []).flatMap((code) => {
+      const fact = SEGMENT_FACTS[code];
+      return fact ? [{ code, list: "excluded" as const, ...fact }] : [];
+    }),
+  ];
+  const places = (draft.placeIds ?? []).flatMap((id) => {
+    const fact = PLACE_FACTS[id];
+    return fact ? [{ id, ...fact }] : [];
+  });
+  if (segments.length === 0 && places.length === 0) return undefined;
+  return { segments, places };
+}
+
 export function draftBlock(draft: DraftCampaign, missing: string[], readyToSave: boolean): IncomingBlock {
-  return { type: "campaign_draft", draft, missing, readyToSave };
+  const choices = choicesFor(draft);
+  return { type: "campaign_draft", draft, missing, readyToSave, ...(choices ? { choices } : {}) };
 }
 
 export function storyBanner(): BannerDraft {

@@ -1,3 +1,42 @@
+import type { PlaceChoice, SegmentChoice } from "../api/types";
+
+export const ALL_USERS_HINT = "Списки включённых и исключённых должны быть пустыми.";
+
+export function formatCount(count: number): string {
+  return String(Math.trunc(count)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
+
+export function segmentReason(choice: SegmentChoice): string {
+  return `${choice.type}, ${formatCount(choice.count)}, ${choice.state}`;
+}
+
+export function segmentReasons(
+  choices: SegmentChoice[] | undefined,
+  list: "included" | "excluded",
+  codes: string[] | undefined,
+): string | undefined {
+  if (!choices || !codes || codes.length === 0) return undefined;
+  const lines = codes.flatMap((code) => {
+    const row = choices.find((item) => item.code === code && item.list === list);
+    return row ? [segmentReason(row)] : [];
+  });
+  return lines.length > 0 ? lines.join("\n") : undefined;
+}
+
+export function placeReason(choice: PlaceChoice): string {
+  const banner = choice.defaultBanner ? `баннер по умолчанию ${choice.defaultBanner}` : "баннера по умолчанию нет";
+  return `${choice.state}, ${banner}`;
+}
+
+export function placeReasons(choices: PlaceChoice[] | undefined, ids: number[] | undefined): string | undefined {
+  if (!choices || !ids || ids.length === 0) return undefined;
+  const lines = ids.flatMap((id) => {
+    const row = choices.find((item) => item.id === id);
+    return row ? [placeReason(row)] : [];
+  });
+  return lines.length > 0 ? lines.join("\n") : undefined;
+}
+
 export function orDash(value: string | number | null | undefined): string {
   if (value === null || value === undefined || value === "") return "—";
   return String(value);

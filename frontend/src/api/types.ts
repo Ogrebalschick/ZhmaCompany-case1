@@ -54,11 +54,31 @@ export interface CampaignListItem {
   endDate?: string | null;
 }
 
+export interface SegmentChoice {
+  code: string;
+  list: "included" | "excluded";
+  type: string;
+  count: number;
+  state: string;
+}
+
+export interface PlaceChoice {
+  id: number;
+  state: string;
+  defaultBanner: string | null;
+}
+
+export interface DraftChoices {
+  segments?: SegmentChoice[];
+  places?: PlaceChoice[];
+}
+
 export interface CampaignDraftBlock {
   type: "campaign_draft";
   draft: DraftCampaign;
   missing: string[];
   readyToSave: boolean;
+  choices?: DraftChoices;
 }
 
 export interface QuickRepliesBlock {
