@@ -1,0 +1,17 @@
+.banner {
+  border: 1px solid var(--warning-line);
+  border-radius: 14px;
+  background: var(--warning-bg);
+  color: var(--warning-ink);
+  padding: 10px 12px;
+}
+
+.banner p {
+  margin: 0 0 6px;
+  font-weight: 700;
+}
+
+.banner ul {
+  margin: 0;
+  padding-left: 18px;
+}

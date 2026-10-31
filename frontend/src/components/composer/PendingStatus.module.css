@@ -1,0 +1,5 @@
+.status {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-weight: 600;
+}

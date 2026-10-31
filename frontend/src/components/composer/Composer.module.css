@@ -1,0 +1,45 @@
+.dock {
+  padding: 8px 24px 18px;
+  background: var(--bg);
+}
+
+.inner {
+  width: min(760px, 100%);
+  margin: 0 auto;
+}
+
+.label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.input {
+  width: 100%;
+  min-height: 84px;
+  resize: vertical;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.input:disabled {
+  background: #eef2f5;
+}
+
+@media (max-width: 700px) {
+  .input {
+    min-height: 64px;
+  }
+}

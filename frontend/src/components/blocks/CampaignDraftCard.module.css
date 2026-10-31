@@ -1,0 +1,17 @@
+.card {
+  display: grid;
+  gap: 12px;
+}
+
+.header h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.fields {
+  margin: 0;
+}
+
+.card button {
+  justify-self: start;
+}
