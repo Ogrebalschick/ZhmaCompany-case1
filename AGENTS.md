@@ -57,6 +57,17 @@ File ownership for parallel agents:
 - `prompt-03-llm.md` — `llm` + `prompt` + `image` and their tests
 - `prompt-04-frontend.md` — `frontend/**` only
 
+## Kotlin checks
+
+Kotlin under `backend/` must pass ktlint before it is handed over.
+
+- `cd backend && ./gradlew :ai:ktlintCheck` checks format and style. A violation fails the task.
+- `cd backend && ./gradlew :ai:ktlintFormat` rewrites sources to the ktlint style. Do not hand-format around it.
+- The Kotlin compiler treats warnings as errors (`allWarningsAsErrors`). Do not suppress them with annotations or compiler flags.
+- GitHub Actions runs `:ai:ktlintCheck` and `:ai:check` on push and pull request. That workflow has to stay green.
+
+Each project module (`backend/ai`, `backend/server`, `frontend`, and any module added later) keeps its own `README.md` up to date. Update that file in the same change when the module's role, folder layout, public API, or run and check commands change. The README states whether the module is a library or an entry point, what other modules may call, and how to build and check it.
+
 ## Mock-data trap
 
 Docs call for 18 mock files, but 7 are absent: `topics.json`, `tags.json`, `segments.json`, `segment_types.json`, `places.json`, `validation_rules.json`, `lifecycle_transitions.json`. The spec still lists their contents (topics/tags/segments/places tables in `mock-data.md` §1; error codes in `task.md` §4). Do not claim validation is data-driven unless you create these files; do not invent values beyond the spec.
