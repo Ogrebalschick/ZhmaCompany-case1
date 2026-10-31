@@ -149,14 +149,20 @@ export class MockChatClient implements ChatClient {
   }
 
   private confirm(): AssistantReply {
-    if (this.phase === "ready" || this.phase === "saved") {
+    if (this.phase === "saved") {
+      return {
+        text: "Кампания уже сохранена. Идентификатор 201.",
+        blocks: [],
+      };
+    }
+    if (this.phase === "ready") {
       const serverNote = serverMetricNote(this.draft);
       this.phase = "saved";
       const saved = this.kind === "own" ? { ...this.draft, savedCampaignId: 201 } : savedDraft();
       this.draft = applyServerMetrics(saved);
       return {
         text: `Кампания сохранена. Идентификатор 201.${serverNote}`,
-        blocks: this.draftBlocks([], true),
+        blocks: this.draftBlocks([], false),
       };
     }
     if (this.kind === "own") {
@@ -280,7 +286,7 @@ export class MockChatClient implements ChatClient {
   }
 
   private ready(): boolean {
-    return this.phase === "ready" || this.phase === "saved";
+    return this.phase === "ready";
   }
 }
 

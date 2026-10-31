@@ -4,6 +4,12 @@ import { changedFieldKeys } from "../../labels/draftRows";
 import { CampaignDraftCard } from "../blocks/CampaignDraftCard";
 import styles from "./DraftRail.module.css";
 
+function railStatus(block: CampaignDraftBlock): string {
+  if (block.draft.savedCampaignId != null) return "Сохранена";
+  if (block.readyToSave) return "Можно сохранить";
+  return "Есть незаполненные поля";
+}
+
 export function DraftRail({
   block,
   disabled,
@@ -32,7 +38,7 @@ export function DraftRail({
         <h2>Сейчас в черновике</h2>
         {block ? (
           <>
-            <p className={styles.status}>{block.readyToSave ? "Можно сохранить" : "Есть незаполненные поля"}</p>
+            <p className={styles.status}>{railStatus(block)}</p>
             <CampaignDraftCard
               block={block}
               disabled={disabled}
