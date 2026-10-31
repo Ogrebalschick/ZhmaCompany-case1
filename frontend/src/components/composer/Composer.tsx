@@ -48,7 +48,12 @@ export function Composer({
               }
             }}
           />
-          <button type="submit" className={controls.primary} data-testid="send" disabled={disabled || !value.trim()}>
+          <button
+            type="submit"
+            className={controls.primary}
+            data-testid="send"
+            disabled={disabled || !value.trim()}
+          >
             Отправить
           </button>
         </div>

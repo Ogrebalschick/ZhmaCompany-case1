@@ -21,7 +21,9 @@ export function AppShell({
       {header}
       <div
         className={styles.body}
-        style={railWidth == null ? undefined : { gridTemplateColumns: `minmax(0, 1fr) ${railWidth}px` }}
+        style={
+          railWidth == null ? undefined : { gridTemplateColumns: `minmax(0, 1fr) ${railWidth}px` }
+        }
       >
         <main className={styles.thread}>{thread}</main>
         <div className={styles.railSlot}>

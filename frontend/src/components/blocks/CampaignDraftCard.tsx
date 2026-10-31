@@ -47,81 +47,104 @@ export function CampaignDraftCard({
         <MissingList codes={block.missing} />
       </header>
       <dl className={styles.fields}>
-        <DraftField fieldKey="name" label="Название" value={orDash(draft.name)} flashToken={flashToken} flash={flashKeys.includes("name")} />
+        <DraftField
+          fieldKey="name"
+          label="Название"
+          value={orDash(draft.name)}
+          flashToken={flashToken}
+          flash={flashKeys.includes("name")}
+        />
         <DraftField
           fieldKey="marketingName"
           label="Маркетинговое имя"
           value={orDash(draft.marketingName)}
-          flashToken={flashToken} flash={flashKeys.includes("marketingName")}
+          flashToken={flashToken}
+          flash={flashKeys.includes("marketingName")}
         />
         <DraftField
           fieldKey="start"
           label="Начало"
           value={formatSchedule(draft.startDate, draft.startTime)}
-          flashToken={flashToken} flash={flashKeys.includes("start")}
+          flashToken={flashToken}
+          flash={flashKeys.includes("start")}
         />
         <DraftField
           fieldKey="end"
           label="Окончание"
           value={formatSchedule(draft.endDate, draft.endTime)}
-          flashToken={flashToken} flash={flashKeys.includes("end")}
+          flashToken={flashToken}
+          flash={flashKeys.includes("end")}
         />
         <DraftField
           fieldKey="topic"
           label="Тема"
           value={draft.topic ? topicLabel(draft.topic) : "—"}
-          flashToken={flashToken} flash={flashKeys.includes("topic")}
+          flashToken={flashToken}
+          flash={flashKeys.includes("topic")}
         />
         <DraftField
           fieldKey="audience"
           label="Аудитория"
           value={audienceLabel(draft.audienceType)}
           hint={draft.audienceType === "ALL_USERS" ? ALL_USERS_HINT : undefined}
-          flashToken={flashToken} flash={flashKeys.includes("audience")}
+          flashToken={flashToken}
+          flash={flashKeys.includes("audience")}
         />
         <DraftField
           fieldKey="included"
           label="Сегменты включения"
           value={formatSegments(draft.includedSegments)}
           hint={segmentReasons(segments, "included", draft.includedSegments)}
-          flashToken={flashToken} flash={flashKeys.includes("included")}
+          flashToken={flashToken}
+          flash={flashKeys.includes("included")}
         />
         <DraftField
           fieldKey="excluded"
           label="Сегменты исключения"
           value={formatSegments(draft.excludedSegments)}
           hint={segmentReasons(segments, "excluded", draft.excludedSegments)}
-          flashToken={flashToken} flash={flashKeys.includes("excluded")}
+          flashToken={flashToken}
+          flash={flashKeys.includes("excluded")}
         />
         <DraftField
           fieldKey="places"
           label="Места показа"
           value={formatPlaces(draft.placeIds)}
           hint={placeReasons(places, draft.placeIds)}
-          flashToken={flashToken} flash={flashKeys.includes("places")}
+          flashToken={flashToken}
+          flash={flashKeys.includes("places")}
         />
         {tags.length > 0 ? (
-          <DraftField fieldKey="tags" label="Теги" value={formatTags(tags)} flashToken={flashToken} flash={flashKeys.includes("tags")} />
+          <DraftField
+            fieldKey="tags"
+            label="Теги"
+            value={formatTags(tags)}
+            flashToken={flashToken}
+            flash={flashKeys.includes("tags")}
+          />
         ) : null}
         <DraftField
           fieldKey="weight"
           label="Вес"
           value={formatMetric(draft.weight)}
           hint={weightHint(draft.weight, draft.initialCtr)}
-          flashToken={flashToken} flash={flashKeys.includes("weight")}
+          flashToken={flashToken}
+          flash={flashKeys.includes("weight")}
         />
         <DraftField
           fieldKey="ctr"
           label="Начальный CTR"
           value={formatMetric(draft.initialCtr)}
           hint={ctrHint(draft.weight, draft.initialCtr)}
-          flashToken={flashToken} flash={flashKeys.includes("ctr")}
+          flashToken={flashToken}
+          flash={flashKeys.includes("ctr")}
         />
         <DraftField
           fieldKey="id"
           label="ID кампании"
           value={formatCampaignId(draft.savedCampaignId)}
-          flashToken={flashToken} flash={flashKeys.includes("id")}
+          flashToken={flashToken}
+          flash={flashKeys.includes("id")}
         />
       </dl>
       {block.readyToSave ? (

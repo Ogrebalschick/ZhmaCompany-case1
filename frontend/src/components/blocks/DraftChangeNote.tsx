@@ -23,7 +23,13 @@ export function DraftChangeNote({
       {changed.length > 0 ? <p>Изменилось: {changed.join(", ")}</p> : null}
       <MissingList codes={block.missing} />
       {block.readyToSave ? (
-        <button type="button" className={controls.primary} data-testid="save-campaign" disabled={disabled} onClick={onSave}>
+        <button
+          type="button"
+          className={controls.primary}
+          data-testid="save-campaign"
+          disabled={disabled}
+          onClick={onSave}
+        >
           Сохранить
         </button>
       ) : null}

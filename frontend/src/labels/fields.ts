@@ -24,11 +24,16 @@ export function segmentReasons(
 }
 
 export function placeReason(choice: PlaceChoice): string {
-  const banner = choice.defaultBanner ? `баннер по умолчанию ${choice.defaultBanner}` : "баннера по умолчанию нет";
+  const banner = choice.defaultBanner
+    ? `баннер по умолчанию ${choice.defaultBanner}`
+    : "баннера по умолчанию нет";
   return `${choice.state}, ${banner}`;
 }
 
-export function placeReasons(choices: PlaceChoice[] | undefined, ids: number[] | undefined): string | undefined {
+export function placeReasons(
+  choices: PlaceChoice[] | undefined,
+  ids: number[] | undefined,
+): string | undefined {
   if (!choices || !ids || ids.length === 0) return undefined;
   const lines = ids.flatMap((id) => {
     const row = choices.find((item) => item.id === id);
@@ -52,13 +57,19 @@ export function formatMetric(value: number | null | undefined): string {
   return String(value);
 }
 
-export function weightHint(weight: number | null | undefined, ctr: number | null | undefined): string | undefined {
+export function weightHint(
+  weight: number | null | undefined,
+  ctr: number | null | undefined,
+): string | undefined {
   if (weight != null) return undefined;
   if (ctr == null) return "Если не задать, при сохранении сервер поставит вес 0 и CTR 15.";
   return "Если не задать, при сохранении сервер поставит 0.";
 }
 
-export function ctrHint(weight: number | null | undefined, ctr: number | null | undefined): string | undefined {
+export function ctrHint(
+  weight: number | null | undefined,
+  ctr: number | null | undefined,
+): string | undefined {
   if (ctr != null || weight == null) return undefined;
   return "Если не задать, при сохранении сервер поставит 15.";
 }

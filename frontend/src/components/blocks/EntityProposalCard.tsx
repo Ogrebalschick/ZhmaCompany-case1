@@ -13,7 +13,12 @@ export function EntityProposalCard({
   disabled: boolean;
   onSend: (text: string) => void;
 }) {
-  const title = proposal.kind === "TAG" ? "Создать тег" : proposal.kind === "PLACE" ? "Создать место" : "Создать сущность";
+  const title =
+    proposal.kind === "TAG"
+      ? "Создать тег"
+      : proposal.kind === "PLACE"
+        ? "Создать место"
+        : "Создать сущность";
   return (
     <section className={styles.card} data-testid="entity-proposal">
       <h3>{title}</h3>
@@ -32,10 +37,20 @@ export function EntityProposalCard({
         </div>
       </dl>
       <div className={styles.actions}>
-        <button type="button" className={controls.primary} disabled={disabled} onClick={() => onSend(CONFIRM_TEXT)}>
+        <button
+          type="button"
+          className={controls.primary}
+          disabled={disabled}
+          onClick={() => onSend(CONFIRM_TEXT)}
+        >
           подтверждаю
         </button>
-        <button type="button" className={controls.quiet} disabled={disabled} onClick={() => onSend(CANCEL_TEXT)}>
+        <button
+          type="button"
+          className={controls.quiet}
+          disabled={disabled}
+          onClick={() => onSend(CANCEL_TEXT)}
+        >
           отмена
         </button>
       </div>

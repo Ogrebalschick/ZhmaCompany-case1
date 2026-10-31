@@ -62,7 +62,11 @@ const PLACES: Record<number, { code: string; description: string; inactive: bool
   3: { code: "catalogPromo", description: "Промо-баннер в каталоге", inactive: false },
   4: { code: "oldStoriesSlot", description: "Архивный сторис-слот", inactive: true },
   5: { code: "paymentsScreenBanner", description: "Баннер на экране платежей", inactive: false },
-  6: { code: "historyScreenBanner", description: "Баннер на экране истории операций", inactive: false },
+  6: {
+    code: "historyScreenBanner",
+    description: "Баннер на экране истории операций",
+    inactive: false,
+  },
   7: { code: "depositScreenPromo", description: "Промо на экране вкладов", inactive: false },
   8: { code: "oldCatalogSlot", description: "Слот каталога до редизайна", inactive: true },
 };

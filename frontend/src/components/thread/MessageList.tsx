@@ -29,7 +29,9 @@ export function MessageList({
     <div className={styles.list} data-testid="message-list">
       <div className={styles.stream}>
         {booting ? <p className={styles.boot}>Открываю сессию</p> : null}
-        {!booting && messages.length === 0 ? <EmptyThread disabled={disabled} onSend={onSend} /> : null}
+        {!booting && messages.length === 0 ? (
+          <EmptyThread disabled={disabled} onSend={onSend} />
+        ) : null}
         {messages.map((message, index) =>
           message.role === "user" ? (
             <UserMessage key={`${message.role}-${index}`} text={message.text} />

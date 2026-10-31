@@ -48,7 +48,13 @@ export function App() {
           <Composer pending={chat.pending} disabled={inputLocked} onSend={chat.send} />
         </>
       }
-      rail={<DraftRail block={chat.draftBlock} disabled={inputLocked} onSave={() => chat.send(CONFIRM_TEXT)} />}
+      rail={
+        <DraftRail
+          block={chat.draftBlock}
+          disabled={inputLocked}
+          onSave={() => chat.send(CONFIRM_TEXT)}
+        />
+      }
       railWidth={wide ? railWidth : null}
       onRailWidth={setRailWidth}
     />

@@ -26,6 +26,8 @@ VITE_USE_MOCK=false
 
 Каждый запрос отправляет заголовки `X-User: ivanov.p` и `X-Role` (`campaignManager` или `campaignModerator`). Смена роли в шапке не создаёт новую сессию. Enter отправляет, Shift+Enter переносит строку.
 
+`npm run lint` проверяет TypeScript и React. `npm run format:check` проверяет оформление, `npm run format` его записывает. На push и pull request в `main` те же две проверки гоняет `.github/workflows/frontend-check.yml`.
+
 ## Контракт
 
 Заголовки каждого запроса: `X-User: ivanov.p`, `X-Role: campaignManager | campaignModerator`. Смена роли сессию не стирает.

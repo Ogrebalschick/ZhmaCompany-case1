@@ -20,7 +20,11 @@ export function draftRows(block: CampaignDraftBlock): DraftRow[] {
     { key: "topic", label: "Тема", value: draft.topic ? topicLabel(draft.topic) : "—" },
     { key: "audience", label: "Аудитория", value: audienceLabel(draft.audienceType) },
     { key: "included", label: "Сегменты включения", value: formatSegments(draft.includedSegments) },
-    { key: "excluded", label: "Сегменты исключения", value: formatSegments(draft.excludedSegments) },
+    {
+      key: "excluded",
+      label: "Сегменты исключения",
+      value: formatSegments(draft.excludedSegments),
+    },
     { key: "places", label: "Места показа", value: formatPlaces(draft.placeIds) },
     { key: "tags", label: "Теги", value: formatTags(draft.tagIds) },
     { key: "weight", label: "Вес", value: formatMetric(draft.weight) },
@@ -29,14 +33,22 @@ export function draftRows(block: CampaignDraftBlock): DraftRow[] {
   ];
 }
 
-export function changedFieldKeys(current: CampaignDraftBlock, previous: CampaignDraftBlock | null): string[] {
+export function changedFieldKeys(
+  current: CampaignDraftBlock,
+  previous: CampaignDraftBlock | null,
+): string[] {
   const rows = draftRows(current);
   if (!previous) return rows.filter((row) => !QUIET.has(row.value)).map((row) => row.key);
   const before = new Map(draftRows(previous).map((row) => [row.key, row.value]));
   return rows.filter((row) => before.get(row.key) !== row.value).map((row) => row.key);
 }
 
-export function changedFieldLabels(current: CampaignDraftBlock, previous: CampaignDraftBlock | null): string[] {
+export function changedFieldLabels(
+  current: CampaignDraftBlock,
+  previous: CampaignDraftBlock | null,
+): string[] {
   const keys = new Set(changedFieldKeys(current, previous));
-  return draftRows(current).filter((row) => keys.has(row.key)).map((row) => row.label);
+  return draftRows(current)
+    .filter((row) => keys.has(row.key))
+    .map((row) => row.label);
 }

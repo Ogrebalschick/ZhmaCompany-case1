@@ -1,4 +1,11 @@
-import type { AssistantReply, BannerDraft, DraftCampaign, DraftChoices, EntityProposal, IncomingBlock } from "../api/types";
+import type {
+  AssistantReply,
+  BannerDraft,
+  DraftCampaign,
+  DraftChoices,
+  EntityProposal,
+  IncomingBlock,
+} from "../api/types";
 
 export const MOCK_SESSION_ID = "mock-session";
 
@@ -52,8 +59,10 @@ export function ownMissing(draft: DraftCampaign): string[] {
 }
 
 export function ageCodeFromText(text: string): "AGE_46_60" | "AGE_26_45" | null {
-  if (text.includes("age_46_60") || text.includes("46–60") || text.includes("46-60")) return "AGE_46_60";
-  if (text.includes("age_26_45") || text.includes("26–45") || text.includes("26-45")) return "AGE_26_45";
+  if (text.includes("age_46_60") || text.includes("46–60") || text.includes("46-60"))
+    return "AGE_46_60";
+  if (text.includes("age_26_45") || text.includes("26–45") || text.includes("26-45"))
+    return "AGE_26_45";
   return null;
 }
 
@@ -102,7 +111,8 @@ export function resolveSchedule(
   let start = current.startDate ?? null;
   let end = current.endDate ?? null;
   let touched = false;
-  if (!iso && !tomorrow && !twoWeeks && !yearEnd) return { startDate: start, endDate: end, notes, touched };
+  if (!iso && !tomorrow && !twoWeeks && !yearEnd)
+    return { startDate: start, endDate: end, notes, touched };
 
   if (iso) {
     if (iso[0] < today) notes.push("Дата начала не раньше сегодня. Её не записал.");
@@ -216,7 +226,11 @@ export function choicesFor(draft: DraftCampaign): DraftChoices | undefined {
   return { segments, places };
 }
 
-export function draftBlock(draft: DraftCampaign, missing: string[], readyToSave: boolean): IncomingBlock {
+export function draftBlock(
+  draft: DraftCampaign,
+  missing: string[],
+  readyToSave: boolean,
+): IncomingBlock {
   const choices = choicesFor(draft);
   return { type: "campaign_draft", draft, missing, readyToSave, ...(choices ? { choices } : {}) };
 }
@@ -246,7 +260,12 @@ export function smartBanner(): BannerDraft {
 }
 
 export function tagProposal(): EntityProposal {
-  return { kind: "TAG", name: "Вклад", code: null, description: "Продуктовый тег для кампаний по вкладам" };
+  return {
+    kind: "TAG",
+    name: "Вклад",
+    code: null,
+    description: "Продуктовый тег для кампаний по вкладам",
+  };
 }
 
 export function placeProposal(): EntityProposal {

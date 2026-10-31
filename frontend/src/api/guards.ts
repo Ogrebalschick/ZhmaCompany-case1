@@ -111,7 +111,8 @@ function asBanner(raw: Record<string, unknown>): BannerDraft | null {
 }
 
 function asProposal(value: unknown): EntityProposal | null {
-  if (!isRecord(value) || typeof value.kind !== "string" || typeof value.name !== "string") return null;
+  if (!isRecord(value) || typeof value.kind !== "string" || typeof value.name !== "string")
+    return null;
   return {
     kind: value.kind,
     name: value.name,
@@ -122,10 +123,21 @@ function asProposal(value: unknown): EntityProposal | null {
 
 function asSegmentChoice(value: unknown): SegmentChoice | null {
   if (!isRecord(value)) return null;
-  if (typeof value.code !== "string" || typeof value.type !== "string" || typeof value.state !== "string") return null;
+  if (
+    typeof value.code !== "string" ||
+    typeof value.type !== "string" ||
+    typeof value.state !== "string"
+  )
+    return null;
   if (value.list !== "included" && value.list !== "excluded") return null;
   if (typeof value.count !== "number" || !Number.isFinite(value.count)) return null;
-  return { code: value.code, list: value.list, type: value.type, count: value.count, state: value.state };
+  return {
+    code: value.code,
+    list: value.list,
+    type: value.type,
+    count: value.count,
+    state: value.state,
+  };
 }
 
 function asPlaceChoice(value: unknown): PlaceChoice | null {
@@ -154,7 +166,8 @@ function asChoices(value: unknown): DraftChoices | undefined {
 }
 
 export function asCampaignDraft(block: IncomingBlock): CampaignDraftBlock | null {
-  if (block.type !== "campaign_draft" || !isRecord(block.draft) || !Array.isArray(block.missing)) return null;
+  if (block.type !== "campaign_draft" || !isRecord(block.draft) || !Array.isArray(block.missing))
+    return null;
   return {
     type: "campaign_draft",
     draft: asDraft(block.draft),
@@ -199,7 +212,8 @@ export function asWarnings(block: IncomingBlock): WarningsBlock | null {
 }
 
 export function asCampaignItem(value: unknown): CampaignListItem | null {
-  if (!isRecord(value) || typeof value.name !== "string" || typeof value.state !== "string") return null;
+  if (!isRecord(value) || typeof value.name !== "string" || typeof value.state !== "string")
+    return null;
   if (typeof value.id !== "number" || typeof value.startDate !== "string") return null;
   return {
     id: value.id,

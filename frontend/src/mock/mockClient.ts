@@ -1,5 +1,13 @@
 import type { ChatClient } from "../api/client";
-import type { AssistantReply, ChatMessage, DraftCampaign, IncomingBlock, JobView, RequestContext, SendAccepted } from "../api/types";
+import type {
+  AssistantReply,
+  ChatMessage,
+  DraftCampaign,
+  IncomingBlock,
+  JobView,
+  RequestContext,
+  SendAccepted,
+} from "../api/types";
 import { CANCEL_TEXT, CONFIRM_TEXT } from "../chat/phrases";
 import {
   AGE_26_REPLY,
@@ -127,7 +135,9 @@ export class MockChatClient implements ChatClient {
     if (lower.includes("вариант")) {
       return {
         text: "Выберите следующий шаг.",
-        blocks: [{ type: "quick_replies", options: [CONFIRM_TEXT, CANCEL_TEXT, "Покажи кампании"] }],
+        blocks: [
+          { type: "quick_replies", options: [CONFIRM_TEXT, CANCEL_TEXT, "Покажи кампании"] },
+        ],
       };
     }
     if (lower.includes("смарт")) {
@@ -195,7 +205,16 @@ export class MockChatClient implements ChatClient {
     const weight = weightFromText(lower);
     const ctr = ctrFromText(lower);
     const reach = isWideReach(lower) && weight === null;
-    if (!age && !topic && !time && !schedule.touched && schedule.notes.length === 0 && weight === null && ctr === null && !reach) {
+    if (
+      !age &&
+      !topic &&
+      !time &&
+      !schedule.touched &&
+      schedule.notes.length === 0 &&
+      weight === null &&
+      ctr === null &&
+      !reach
+    ) {
       return null;
     }
 
@@ -208,15 +227,18 @@ export class MockChatClient implements ChatClient {
       ...this.draft,
       includedSegments: segments,
       topic: topic ?? this.draft.topic,
-      startDate: schedule.touched || schedule.notes.length > 0 ? schedule.startDate : this.draft.startDate,
-      endDate: schedule.touched || schedule.notes.length > 0 ? schedule.endDate : this.draft.endDate,
+      startDate:
+        schedule.touched || schedule.notes.length > 0 ? schedule.startDate : this.draft.startDate,
+      endDate:
+        schedule.touched || schedule.notes.length > 0 ? schedule.endDate : this.draft.endDate,
       startTime: time ? time[1] : this.draft.startTime,
       weight: weight ?? this.draft.weight,
       initialCtr: ctr ?? this.draft.initialCtr,
     };
     this.phase = "incomplete";
     const reply = this.ownReply();
-    let message = schedule.notes.length > 0 ? `${schedule.notes.join(" ")} ${reply.text}` : reply.text;
+    let message =
+      schedule.notes.length > 0 ? `${schedule.notes.join(" ")} ${reply.text}` : reply.text;
     if (reach && this.draft.weight == null) {
       const hasButtons = reply.blocks.some((block) => block.type === "quick_replies");
       message = hasButtons
