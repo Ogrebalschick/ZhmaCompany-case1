@@ -32,42 +32,51 @@ fun Route.campaignRoutes() {
 
     post("/campaigns/{id}/confirm") {
         call.requireManager()
-        val sessionId = call.request.queryParameters["sessionId"]
-            ?: throw bad(ApiError("sessionId", "Укажите sessionId", "sessionId"))
+        val sessionId =
+            call.request.queryParameters["sessionId"]
+                ?: throw bad(ApiError("sessionId", "Укажите sessionId", "sessionId"))
         call.respond(db { confirmDraft(sessionId, call.longId(), call.caller()) })
     }
     post("/campaigns/{id}/to-moderation") {
         call.requireManager()
         val id = call.longId()
-        call.respond(db {
-            moderate(id, call.caller().user)
-            stateOf(id)
-        })
+        call.respond(
+            db {
+                moderate(id, call.caller().user)
+                stateOf(id)
+            },
+        )
     }
     post("/campaigns/{id}/approve") {
         call.requireModerator()
         val id = call.longId()
-        call.respond(db {
-            approve(id, call.caller().user)
-            stateOf(id)
-        })
+        call.respond(
+            db {
+                approve(id, call.caller().user)
+                stateOf(id)
+            },
+        )
     }
     post("/campaigns/{id}/decline") {
         call.requireModerator()
         val body = call.receive<CommentBody>()
         val id = call.longId()
-        call.respond(db {
-            decline(id, call.caller().user, body.comment)
-            stateOf(id)
-        })
+        call.respond(
+            db {
+                decline(id, call.caller().user, body.comment)
+                stateOf(id)
+            },
+        )
     }
     post("/campaigns/{id}/activate") {
         call.requireManager()
         val id = call.longId()
-        call.respond(db {
-            activate(id, call.caller().user)
-            stateOf(id)
-        })
+        call.respond(
+            db {
+                activate(id, call.caller().user)
+                stateOf(id)
+            },
+        )
     }
 }
 

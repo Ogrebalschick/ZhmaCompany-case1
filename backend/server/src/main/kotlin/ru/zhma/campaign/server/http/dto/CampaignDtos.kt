@@ -5,7 +5,10 @@ import kotlinx.serialization.json.JsonElement
 import ru.zhma.campaign.server.http.ApiError
 
 @Serializable
-data class SegmentsDto(val included: List<String>, val excluded: List<String>)
+data class SegmentsDto(
+    val included: List<String>,
+    val excluded: List<String>,
+)
 
 @Serializable
 data class BannerDto(
@@ -62,10 +65,19 @@ data class CampaignDetailsDto(
 )
 
 @Serializable
-data class CampaignStateDto(val id: Long, val state: String, val published: Boolean)
+data class CampaignStateDto(
+    val id: Long,
+    val state: String,
+    val published: Boolean,
+)
 
 @Serializable
-data class WarningsResponse(val errors: List<ApiError>, val warnings: List<String>)
+data class WarningsResponse(
+    val errors: List<ApiError>,
+    val warnings: List<String>,
+)
 
 @Serializable
-data class CommentBody(val comment: String? = null)
+data class CommentBody(
+    val comment: String? = null,
+)

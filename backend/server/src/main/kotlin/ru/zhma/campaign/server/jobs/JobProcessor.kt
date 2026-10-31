@@ -15,8 +15,8 @@ import ru.zhma.campaign.ai.model.TurnInput
 import ru.zhma.campaign.server.db.DatabaseFactory
 import ru.zhma.campaign.server.http.ApiException
 import ru.zhma.campaign.server.http.Caller
-import ru.zhma.campaign.server.service.applyCommit
 import ru.zhma.campaign.server.service.appendMessage
+import ru.zhma.campaign.server.service.applyCommit
 import ru.zhma.campaign.server.service.failJob
 import ru.zhma.campaign.server.service.finishJob
 import ru.zhma.campaign.server.service.listCampaignItems
@@ -28,32 +28,42 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import kotlin.time.Duration.Companion.seconds
 
-class JobProcessor(private val scope: CoroutineScope) {
-    fun start(jobId: String, sessionId: String, text: String, caller: Caller) {
+class JobProcessor(
+    private val scope: CoroutineScope,
+) {
+    fun start(
+        jobId: String,
+        sessionId: String,
+        text: String,
+        caller: Caller,
+    ) {
         scope.launch {
             try {
-                withTimeout(30.seconds) {
-                    val loaded = DatabaseFactory.db {
-                        appendMessage(sessionId, "user", text, null)
-                        Loaded(loadDraft(sessionId), loadSnapshot(), listCampaignItems())
-                    }
+                withTimeout(100.seconds) {
+                    val loaded =
+                        DatabaseFactory.db {
+                            appendMessage(sessionId, "user", text, null)
+                            Loaded(loadDraft(sessionId), loadSnapshot(), listCampaignItems())
+                        }
                     val today = LocalDate.now(ZoneOffset.UTC).toString()
-                    val result = AgentTurn(llmClient()).handle(
-                        TurnInput(
-                            draft = loaded.draft,
-                            userText = text,
-                            catalog = loaded.catalog,
-                            today = today,
-                            campaigns = loaded.campaigns,
-                        ),
-                    )
+                    val result =
+                        AgentTurn(llmClient()).handle(
+                            TurnInput(
+                                draft = loaded.draft,
+                                userText = text,
+                                catalog = loaded.catalog,
+                                today = today,
+                                campaigns = loaded.campaigns,
+                            ),
+                        )
                     DatabaseFactory.db {
                         val commit = result.commit
-                        val draft = if (commit != null) {
-                            applyCommit(result.draft, commit.action, caller)
-                        } else {
-                            result.draft
-                        }
+                        val draft =
+                            if (commit != null) {
+                                applyCommit(result.draft, commit.action, caller)
+                            } else {
+                                result.draft
+                            }
                         saveDraft(sessionId, draft)
                         appendMessage(sessionId, "assistant", result.reply.text, result.reply.blocks)
                         finishJob(jobId, result.reply)
@@ -73,7 +83,10 @@ class JobProcessor(private val scope: CoroutineScope) {
         scope.coroutineContext[Job]?.cancel()
     }
 
-    private suspend fun markFailed(jobId: String, message: String) {
+    private suspend fun markFailed(
+        jobId: String,
+        message: String,
+    ) {
         try {
             DatabaseFactory.db { failJob(jobId, message) }
         } catch (error: Throwable) {
@@ -89,9 +102,10 @@ private data class Loaded(
 )
 
 private fun shortMessage(error: Throwable): String {
-    val text = when (error) {
-        is ApiException -> error.errors.joinToString("; ") { it.message }
-        else -> error.message ?: error::class.simpleName ?: "Ошибка"
-    }
+    val text =
+        when (error) {
+            is ApiException -> error.errors.joinToString("; ") { it.message }
+            else -> error.message ?: error::class.simpleName ?: "Ошибка"
+        }
     return text.lineSequence().first().take(300)
 }

@@ -4,11 +4,13 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
     application
+    id("org.jlleitschuh.gradle.ktlint")
 }
 
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        allWarningsAsErrors.set(true)
     }
 }
 
@@ -42,6 +44,8 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    maxParallelForks = 1
+    maxHeapSize = "256m"
     outputs.upToDateWhen { false }
     testLogging {
         events("passed", "skipped", "failed")

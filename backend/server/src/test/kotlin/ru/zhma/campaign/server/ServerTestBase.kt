@@ -33,9 +33,10 @@ abstract class ServerTestBase {
 
     protected fun db(): String = temp.resolve("test.db").toString()
 
-    protected fun ApplicationTestBuilder.jsonClient(): HttpClient = createClient {
-        install(ContentNegotiation) { json(AppJson) }
-    }
+    protected fun ApplicationTestBuilder.jsonClient(): HttpClient =
+        createClient {
+            install(ContentNegotiation) { json(AppJson) }
+        }
 
     protected fun HttpRequestBuilder.manager() {
         header("X-User", "ivanov.p")
@@ -52,12 +53,22 @@ abstract class ServerTestBase {
     protected suspend fun HttpResponse.jsonArray() = AppJson.parseToJsonElement(bodyAsText()).jsonArray
 
     protected suspend fun HttpResponse.errorCode(): String =
-        json()["errors"]!!.jsonArray.first().jsonObject["code"]!!.jsonPrimitive.content
+        json()["errors"]!!
+            .jsonArray
+            .first()
+            .jsonObject["code"]!!
+            .jsonPrimitive.content
 
     protected suspend fun session(client: HttpClient): String =
-        client.post("/api/sessions") { manager() }.json()["sessionId"]!!.jsonPrimitive.content
+        client
+            .post("/api/sessions") { manager() }
+            .json()["sessionId"]!!
+            .jsonPrimitive.content
 
-    protected suspend fun putDraft(sessionId: String, json: String) {
+    protected suspend fun putDraft(
+        sessionId: String,
+        json: String,
+    ) {
         DatabaseFactory.db {
             SessionsTable.update({ SessionsTable.id eq sessionId }) {
                 it[draftJson] = json
@@ -76,12 +87,13 @@ abstract class ServerTestBase {
         banner: String? = null,
         savedCampaignId: String? = null,
     ): String {
-        val extra = buildString {
-            if (endDate != null) append(""","endDate":"$endDate"""")
-            if (endTime != null) append(""","endTime":"$endTime"""")
-            if (banner != null) append(""","banner":$banner""")
-            if (savedCampaignId != null) append(""","savedCampaignId":$savedCampaignId""")
-        }
+        val extra =
+            buildString {
+                if (endDate != null) append(""","endDate":"$endDate"""")
+                if (endTime != null) append(""","endTime":"$endTime"""")
+                if (banner != null) append(""","banner":$banner""")
+                if (savedCampaignId != null) append(""","savedCampaignId":$savedCampaignId""")
+            }
         return """
             {
               "name": "$name",
@@ -94,9 +106,11 @@ abstract class ServerTestBase {
               "tagIds": $tags
               $extra
             }
-        """.trimIndent()
+            """.trimIndent()
     }
 
-    protected fun storyBanner(channel: String = "iOS", title: String = "Вклад") =
-        """{"bannerType":"STORY","channel":"$channel","title":"$title","text":"Текст","actionType":"default"}"""
+    protected fun storyBanner(
+        channel: String = "iOS",
+        title: String = "Вклад",
+    ) = """{"bannerType":"STORY","channel":"$channel","title":"$title","text":"Текст","actionType":"default"}"""
 }

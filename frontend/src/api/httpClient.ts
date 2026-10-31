@@ -79,11 +79,27 @@ function isJobStatus(value: unknown): value is JobStatus {
 
 async function readError(response: Response): Promise<string> {
   try {
-    const body = (await response.json()) as { error?: unknown; message?: unknown };
+    const body = (await response.json()) as {
+      error?: unknown;
+      message?: unknown;
+      errors?: unknown;
+    };
     if (typeof body.error === "string" && body.error.trim()) return body.error;
     if (typeof body.message === "string" && body.message.trim()) return body.message;
+    const fromList = firstErrorMessage(body.errors);
+    if (fromList) return fromList;
   } catch {
     return `Сервер ответил с ошибкой ${response.status}.`;
   }
   return `Сервер ответил с ошибкой ${response.status}.`;
+}
+
+function firstErrorMessage(errors: unknown): string | null {
+  if (!Array.isArray(errors)) return null;
+  for (const item of errors) {
+    if (!item || typeof item !== "object") continue;
+    const message = (item as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return null;
 }

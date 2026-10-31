@@ -1,21 +1,37 @@
-# Кампании: сервер
+# Кампании
 
-Чат собирает черновик кампании. Запись в базу делает только сервер после явного подтверждения. Разбор реплики живёт в модуле `:ai`.
+Чат собирает черновик рекламной кампании. Запись в базу делает только сервер, и только после явного подтверждения. Разбор реплики живёт в библиотеке `:ai`.
 
-Нужен JDK 17 или новее. Сборка целится в байткод 17.
+Нужен JDK 17 или новее (байткод 17) и Node.js для экрана.
 
-## Запуск
+## Что это
 
-Сервер, порт 8080:
+Три части одного контура:
+
+- `frontend/` — экран чата, порт 5173. Промптов нет, баннер рисует вёрстка.
+- `backend/` модуль `:server` — HTTP, SQLite, исполнение уже принятого действия. Порт 8080.
+- `backend/` модуль `:ai` — конечный автомат диалога. HTTP и базы нет.
+
+## Кто вызывает
+
+Человек открывает экран. Экран ходит в `:server`. Сервер на каждое сообщение вызывает `AgentTurn` и сам пишет SQLite, если в ответе есть `commit`. Модель только достаёт JSON из реплики и коротко формулирует вопрос.
+
+Каждый запрос к `/api` несёт `X-User` и `X-Role` (`campaignManager` или `campaignModerator`). Нет заголовка — 400. Сервер возвращает оба заголовка в ответе.
+
+## Как запустить
+
+Живая модель, если заданы обе переменные. Иначе сервер берёт `MockLlmClient` и сеть не нужна. Ключ не обязателен: пустой `OPENAI_API_KEY` не отправляет `Authorization`.
 
 ```bat
+set OPENAI_BASE_URL=http://100.104.60.3:9292/v1
+set OPENAI_MODEL=qwen3.8-27b-fast
 cd backend
 gradlew.bat :server:run
 ```
 
-На Unix: `./gradlew :server:run`. База создаётся сама: `backend/data/campaigns.db`. При первом старте в неё попадают справочники (темы, теги, сегменты, места, типы баннеров, каналы). Исторические кампании 101–115 не загружаются.
+На Unix те же переменные и `./gradlew :server:run`. База создаётся сама: `backend/data/campaigns.db`. При первом старте в неё попадают справочники. Исторические кампании 101–115 не загружаются.
 
-Фронт, порт 5173, прокси `/api` на `http://localhost:8080`:
+Фронт, прокси `/api` на `http://localhost:8080`. В разработке мок выключен (`frontend/.env.development`).
 
 ```bat
 cd frontend
@@ -23,9 +39,22 @@ npm install
 npm run dev
 ```
 
-Подробности экрана — в `frontend/README.md`, когда он появится.
+Экран: `http://localhost:5173`. Чтобы работать без сервера, в `frontend/.env.local` поставьте `VITE_USE_MOCK=true`.
 
-Каждый запрос к `/api` несёт заголовки `X-User` и `X-Role`. Роль — `campaignManager` или `campaignModerator`. Сервер возвращает оба заголовка в ответе. Нет заголовка — 400.
+Один вызов модели ждёт до 45 секунд. Ход с двумя вызовами укладывается в 100 секунд ожидания job. Исключение переводит job в `FAILED` и не останавливает процесс. Картинки модель не рисует и не смотрит: превью баннера — вёрстка, файл картинки — одноцветный PNG.
+
+Выбор клиента: `backend/server/src/main/kotlin/ru/zhma/campaign/server/wiring/Clients.kt`, функция `llmClient()`.
+
+## Как проверить
+
+```bat
+cd backend
+gradlew.bat :ai:ktlintCheck :ai:check :server:ktlintCheck :server:test
+cd ..\frontend
+npm run build
+```
+
+На Unix в `backend` та же команда через `./gradlew`. Эти шаги повторяет `.github/workflows/kotlin.yml`.
 
 ## Чат
 
@@ -33,10 +62,6 @@ npm run dev
 2. `POST /api/sessions/{id}/messages` с телом `{ "text": "..." }` → `202 { "jobId" }`.
 3. `GET /api/jobs/{jobId}` → `status` равен `PENDING`, `DONE` или `FAILED`. У `DONE` в `result` ответ ассистента `{ "text", "blocks" }`. У `FAILED` короткое поле `error`.
 4. `GET /api/sessions/{id}/messages` — история. У ответа ассистента `blocks` уже разобраны.
-
-Обработка job не дольше 30 секунд. Исключение переводит job в `FAILED` и не останавливает процесс.
-
-Модель подключается в `backend/server/src/main/kotlin/ru/zhma/campaign/server/wiring/Clients.kt`, функция `llmClient()`. Сейчас это `MockLlmClient`.
 
 ## Ручки
 
@@ -65,9 +90,4 @@ npm run dev
 
 `weight` по умолчанию 0, `initialCtr` по умолчанию 15, если в черновике пусто. Новая кампания: `DRAFT`, `published=false`, автор из `X-User`.
 
-Проверка:
-
-```bat
-cd backend
-gradlew.bat :server:test
-```
+Подробности модулей: `backend/ai/README.md`, `backend/server/README.md`, `frontend/README.md`. Карта экрана: `frontend-structure.md`.
