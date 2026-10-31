@@ -53,6 +53,7 @@ export function App() {
             <MessageList
               messages={chat.messages}
               booting={chat.booting}
+              userFlight={chat.userFlight}
               disabled={inputLocked}
               onSend={chat.send}
               onSave={() => chat.send(CONFIRM_TEXT)}

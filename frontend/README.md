@@ -2,7 +2,7 @@
 
 Один экран: шапка с ролью, лента ответов ассистента, поле ввода и боковой черновик. Промпты и автомат живут в `backend/`.
 
-Обновлено: имя из ответа ассистента попадает в список слева, в шапку и в заголовок вкладки. Пустое имя оставляет «Сборка кампании».
+Обновлено: при загрузке экран проявляется, ожидание сменяет фразы, отправленная реплика вылетает из поля ввода.
 
 Статус: `npm run dev` в этой папке открывает `http://localhost:5173` и ходит в `http://localhost:8080`. Сервер должен быть запущен. Чтобы обойтись без него, в `.env.development.local` поставьте `VITE_USE_MOCK=true`.
 
@@ -67,7 +67,7 @@ VITE_USE_MOCK=true
 
 Коды `missing`: `name`, `startDate`, `startTime`, `topic`, `audienceType`, `places`, `segments`. Пустые поля показываются как «—». Пустые вес и CTR тоже прочерк, не ноль. Если пусты оба, под весом строка: «Если не задать, при сохранении сервер поставит вес 0 и CTR 15». Если пуст только один, подсказка называет только его. Это подпись экрана: в `draft.weight` и `draft.initialCtr` нули от неё не появляются. Кнопка `вес 10` шлёт этот текст как обычную реплику.
 
-Пока job `PENDING`, поле заблокировано и виден статус «Собираю ответ». Опрос раз в секунду, не дольше 110 попыток. `FAILED` и ошибка сети пишутся в ленту как сообщение ассистента. Текст HTTP-ошибки берётся из `errors[0].message`, если сервер прислал такой список. Если сессия не открылась, шапка пишет «Сессия не создана», а поле остаётся закрытым.
+Пока job `PENDING`, поле заблокировано. Над полем фразы сменяются и переливаются: «Думаю...», «Пролистываю базу данных...», «Сверяю справочник...», «Собираю черновик...», «Готовлю ответ...». Для чтения с экрана статус остаётся «Собираю ответ». Если в системе отключено движение, видна только эта строка, экран появляется сразу, а реплика встаёт в ленту без полёта. Опрос раз в секунду, не дольше 110 попыток. `FAILED` и ошибка сети пишутся в ленту как сообщение ассистента. Текст HTTP-ошибки берётся из `errors[0].message`, если сервер прислал такой список. Если сессия не открылась, шапка пишет «Сессия не создана», а поле остаётся закрытым.
 
 ## Мок
 
@@ -111,21 +111,21 @@ VITE_USE_MOCK=true
 - `frontend/src/chat/useChat.ts` — сессия, отправка, опрос, список после ответа
 - `frontend/src/chat/campaignList.ts` — временная строка из `draft.name`, заголовок экрана
 - `frontend/src/chat/selectors.ts` — последний черновик и последние быстрые ответы
-- `frontend/src/chat/phrases.ts` — `подтверждаю`, `отмена`, логин, две стартовые фразы (`OWN_BRIEF`, `STARTER_BRIEF`)
+- `frontend/src/chat/phrases.ts` — `подтверждаю`, `отмена`, логин, фразы ожидания, две стартовые фразы (`OWN_BRIEF`, `STARTER_BRIEF`)
 - `frontend/src/labels/fields.ts` — подписи полей, аудитории, `missing`, строки причины из `choices` и подсказка про вес 0 и CTR 15
 - `frontend/src/labels/states.ts` — ярлык того же `state` и отдельно `published`
 - `frontend/src/labels/catalog.ts` — имена сегментов, мест, тегов и подпись кнопки `replyLabel`
-- `frontend/src/components/layout/AppShell.tsx` — колонки, стартовая ширина черновика 460px и ручка изменения ширины
+- `frontend/src/components/layout/AppShell.tsx` — колонки, проявление при загрузке, стартовая ширина черновика 460px и ручка изменения ширины
 - `frontend/src/components/layout/CampaignDrawer.tsx` — левая панель кампаний, затемнение и полоска
 - `frontend/src/components/layout/HeaderBar.tsx` — стрелка «Кампании», имя черновика, пользователь и сессия
 - `frontend/src/components/layout/RoleSelect.tsx` — две роли
-- `frontend/src/components/thread/MessageList.tsx` — прокрутка ленты
+- `frontend/src/components/thread/MessageList.tsx` — прокрутка ленты и вылет реплики из поля ввода
 - `frontend/src/components/thread/EmptyThread.tsx` — пустая лента: сначала свой бриф (`starter-own-brief`), ниже бриф про вклад (`starter-brief`)
 - `frontend/src/components/thread/UserMessage.tsx` — реплика пользователя
 - `frontend/src/components/thread/AssistantMessage.tsx` — текст ассистента
 - `frontend/src/components/thread/BlockList.tsx` — выбор блока по `type`
 - `frontend/src/components/composer/Composer.tsx` — Enter и Shift+Enter
-- `frontend/src/components/composer/PendingStatus.tsx` — «Собираю ответ»
+- `frontend/src/components/composer/PendingStatus.tsx` — сменяющиеся фразы ожидания, для чтения с экрана «Собираю ответ»
 - `frontend/src/components/composer/QuickReplyBar.tsx` — те же ответы над полем
 - `frontend/src/components/blocks/CampaignDraftCard.tsx` — полная таблица черновика справа
 - `frontend/src/components/blocks/DraftChangeNote.tsx` — в ленте имя, что изменилось, что осталось, «Сохранить»

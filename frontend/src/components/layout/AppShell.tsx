@@ -18,7 +18,7 @@ export function AppShell({
 
   return (
     <div className={styles.shell}>
-      {header}
+      <div className={styles.enter}>{header}</div>
       <div
         className={styles.body}
         style={

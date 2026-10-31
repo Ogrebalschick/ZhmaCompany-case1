@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { asCampaignDraft } from "../../api/guards";
 import type { CampaignDraftBlock, ChatMessage } from "../../api/types";
 import { AssistantMessage } from "./AssistantMessage";
@@ -9,24 +9,71 @@ import styles from "./MessageList.module.css";
 export function MessageList({
   messages,
   booting,
+  userFlight,
   disabled,
   onSend,
   onSave,
 }: {
   messages: ChatMessage[];
   booting: boolean;
+  userFlight: number;
   disabled: boolean;
   onSend: (text: string) => void;
   onSave: () => void;
 }) {
   const endRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const flown = useRef(0);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
-  }, [messages, booting]);
+    if (userFlight === 0 || flown.current === userFlight) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      flown.current = userFlight;
+      return;
+    }
+    const list = listRef.current;
+    const bubble = list?.querySelector<HTMLElement>("[data-entering]");
+    const field = document.getElementById("composer");
+    if (!list || !bubble || !field) return;
+    const from = field.getBoundingClientRect();
+    const to = bubble.getBoundingClientRect();
+    const dx = from.left + from.width / 2 - (to.left + to.width / 2);
+    const dy = from.top + from.height / 2 - (to.top + to.height / 2);
+    list.style.overflow = "visible";
+    bubble.style.transform = `translate(${dx}px, ${dy}px) scale(0.96)`;
+    bubble.style.opacity = "0.45";
+    let cancel = false;
+    let inner = 0;
+    const outer = window.requestAnimationFrame(() => {
+      inner = window.requestAnimationFrame(() => {
+        if (cancel) return;
+        flown.current = userFlight;
+        bubble.style.transition = "transform 420ms ease, opacity 420ms ease";
+        bubble.style.transform = "";
+        bubble.style.opacity = "";
+      });
+    });
+    const restore = (event: Event) => {
+      if (event instanceof TransitionEvent && event.propertyName !== "transform") return;
+      list.style.overflow = "";
+      bubble.removeEventListener("transitionend", restore);
+    };
+    bubble.addEventListener("transitionend", restore);
+    return () => {
+      cancel = true;
+      window.cancelAnimationFrame(outer);
+      window.cancelAnimationFrame(inner);
+      bubble.removeEventListener("transitionend", restore);
+      list.style.overflow = "";
+      bubble.style.transition = "";
+      bubble.style.transform = "";
+      bubble.style.opacity = "";
+    };
+  }, [messages, booting, userFlight]);
 
   return (
-    <div className={styles.list} data-testid="message-list">
+    <div className={styles.list} ref={listRef} data-testid="message-list">
       <div className={styles.stream}>
         {booting ? <p className={styles.boot}>Открываю сессию</p> : null}
         {!booting && messages.length === 0 ? (
@@ -34,7 +81,11 @@ export function MessageList({
         ) : null}
         {messages.map((message, index) =>
           message.role === "user" ? (
-            <UserMessage key={`${message.role}-${index}`} text={message.text} />
+            <UserMessage
+              key={`${message.role}-${index}`}
+              text={message.text}
+              entering={userFlight > 0 && index === messages.length - 1}
+            />
           ) : (
             <AssistantMessage
               key={`${message.role}-${index}`}

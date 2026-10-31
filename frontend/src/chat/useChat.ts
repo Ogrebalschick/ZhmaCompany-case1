@@ -32,6 +32,7 @@ export function useChat(client: ChatClient) {
   const [campaigns, setCampaigns] = useState<CampaignListItem[]>([]);
   const [campaignMessages, setCampaignMessages] = useState<ChatMessage[] | null>(null);
   const [pending, setPending] = useState(false);
+  const [userFlight, setUserFlight] = useState(0);
   const [booting, setBooting] = useState(true);
   const roleRef = useRef(role);
   const sessionRef = useRef(sessionId);
@@ -120,6 +121,7 @@ export function useChat(client: ChatClient) {
       sending.current = true;
       setPending(true);
       append({ role: "user", text: trimmed });
+      setUserFlight((value) => value + 1);
       const requestId = ++request.current;
       void (async () => {
         try {
@@ -199,6 +201,7 @@ export function useChat(client: ChatClient) {
     campaigns,
     pending,
     booting,
+    userFlight,
     draftBlock,
     quickReplies,
     send,
