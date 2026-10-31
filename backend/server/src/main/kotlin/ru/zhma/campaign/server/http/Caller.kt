@@ -6,6 +6,7 @@ import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.createRouteScopedPlugin
 import io.ktor.server.application.install
 import io.ktor.server.request.httpMethod
+import io.ktor.server.request.path
 import io.ktor.server.response.header
 import io.ktor.server.routing.Route
 import io.ktor.util.AttributeKey
@@ -23,6 +24,8 @@ private val CallerPlugin =
     createRouteScopedPlugin(name = "CallerHeaders") {
         onCall { call ->
             if (call.request.httpMethod == HttpMethod.Options) return@onCall
+            // Картинки открывает тег <img>, он не умеет слать заголовки.
+            if (call.request.path().startsWith("/api/images/") || call.request.path() == "/api/health") return@onCall
             val user = call.request.headers["X-User"]
             val role = call.request.headers["X-Role"]
             val errors = mutableListOf<ApiError>()

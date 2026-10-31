@@ -57,3 +57,36 @@
     display: none;
   }
 }
+
+.frame {
+  height: 100vh;
+  height: 100dvh;
+  display: grid;
+  grid-template-columns: 272px minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.frame > .shell:only-child {
+  grid-column: 1 / -1;
+}
+
+.sidebar {
+  min-height: 0;
+  display: grid;
+}
+
+@media (max-width: 1100px) {
+  .frame {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .frame {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+}

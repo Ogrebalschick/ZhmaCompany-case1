@@ -15,3 +15,10 @@
 .card button {
   justify-self: start;
 }
+
+.reach {
+  margin: 6px 0 0;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+}

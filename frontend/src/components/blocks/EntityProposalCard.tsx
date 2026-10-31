@@ -1,13 +1,11 @@
 import type { EntityProposal } from "../../api/types";
-import { CANCEL_TEXT, CONFIRM_TEXT } from "../../chat/phrases";
 import { orDash } from "../../labels/fields";
-import controls from "../../styles/controls.module.css";
 import styles from "./EntityProposalCard.module.css";
 
 export function EntityProposalCard({
   proposal,
-  disabled,
-  onSend,
+  disabled: _disabled,
+  onSend: _onSend,
 }: {
   proposal: EntityProposal;
   disabled: boolean;
@@ -36,24 +34,6 @@ export function EntityProposalCard({
           <dd>{orDash(proposal.description)}</dd>
         </div>
       </dl>
-      <div className={styles.actions}>
-        <button
-          type="button"
-          className={controls.primary}
-          disabled={disabled}
-          onClick={() => onSend(CONFIRM_TEXT)}
-        >
-          подтверждаю
-        </button>
-        <button
-          type="button"
-          className={controls.quiet}
-          disabled={disabled}
-          onClick={() => onSend(CANCEL_TEXT)}
-        >
-          отмена
-        </button>
-      </div>
     </section>
   );
 }

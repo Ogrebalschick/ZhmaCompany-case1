@@ -4,8 +4,90 @@
   padding: 8px 24px 0;
 }
 
-.bar p {
+.bar > p {
   margin: 0 0 6px;
   color: var(--muted);
   font-size: 13px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 168px;
+  overflow-y: auto;
+  padding-bottom: 2px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    transform 0.1s;
+}
+
+.chip:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.chip:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.chip:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.chip small {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.recommended {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.recommended::after {
+  content: "★";
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.active small {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.active:hover:not(:disabled) {
+  color: #fff;
+}
+
+.box {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid currentColor;
+  font-size: 11px;
 }

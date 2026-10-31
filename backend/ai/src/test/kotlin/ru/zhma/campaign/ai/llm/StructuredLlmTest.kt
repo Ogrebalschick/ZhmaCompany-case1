@@ -1,4 +1,4 @@
-﻿package ru.zhma.campaign.ai.llm
+package ru.zhma.campaign.ai.llm
 
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.builtins.serializer
@@ -52,7 +52,7 @@ class StructuredLlmTest {
         runBlocking {
             val llm = ScriptedLlm(listOf("not json", "still bad", "7"))
             val sl = StructuredLlm(llm)
-            val result = sl.ask("sys", "user", intSerializer)
+            val result = sl.ask("sys", "user", intSerializer, retries = 3)
             assertEquals(7, result)
             assertEquals(3, llm.calls)
         }
@@ -64,7 +64,7 @@ class StructuredLlmTest {
             val sl = StructuredLlm(llm)
             val ex =
                 try {
-                    sl.ask("sys", "user", intSerializer)
+                    sl.ask("sys", "user", intSerializer, retries = 3)
                     null
                 } catch (e: IllegalStateException) {
                     e
@@ -73,6 +73,12 @@ class StructuredLlmTest {
             assertTrue(ex!!.message!!.contains("3"))
             assertEquals(3, llm.calls)
         }
+
+    @Test
+    fun `extracts json from thinking and prose`() {
+        val raw = "<think>надо подумать {не json}</think>Вот ответ: {\"intent\":\"OTHER\",\"patch\":{\"name\":\"a}b\"}} спасибо"
+        assertEquals("{\"intent\":\"OTHER\",\"patch\":{\"name\":\"a}b\"}}", StructuredLlm.extractJson(raw))
+    }
 
     @Test
     fun `validate failure triggers retry then succeeds`() =

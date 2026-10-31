@@ -1,0 +1,90 @@
+.card {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: var(--surface);
+}
+
+.card[data-verdict="WARN"] {
+  border-left-color: #d79a1c;
+  background: var(--warning-bg);
+}
+
+.card[data-verdict="FAIL"] {
+  border-left-color: #c0392b;
+  background: #fdeeee;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.head span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.list li {
+  display: flex;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.list p {
+  margin: 0;
+}
+
+.icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--muted);
+}
+
+li[data-status="OK"] .icon {
+  background: var(--accent);
+}
+
+li[data-status="WARN"] .icon {
+  background: #d79a1c;
+}
+
+li[data-status="FAIL"] .icon {
+  background: #c0392b;
+}
+
+.fix {
+  color: var(--muted);
+  margin-top: 2px !important;
+}
+
+.ai {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+}

@@ -7,7 +7,32 @@ import { USER_LOGIN } from "./phrases";
 import { latestDraftBlock, latestQuickReplies } from "./selectors";
 
 const POLL_MS = 1000;
-const POLL_LIMIT = 110;
+const POLL_LIMIT = Number(import.meta.env.VITE_TURN_TIMEOUT_SEC || 330);
+const BOOT_RETRIES = 60;
+const SESSION_KEY = "campaign.sessionId";
+const BOOT_RETRY_MS = 3000;
+const SESSIONS_KEY = "campaign.sessions";
+
+/** Черновик в работе: сессия чата, которую можно открыть из боковой панели. */
+export interface SessionEntry {
+  id: string;
+  title: string;
+  updatedAt: number;
+  campaignId?: number | null;
+}
+
+function readSessions(): SessionEntry[] {
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(SESSIONS_KEY) ?? "[]") as SessionEntry[];
+    return Array.isArray(raw) ? raw : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeSessions(list: SessionEntry[]) {
+  window.localStorage.setItem(SESSIONS_KEY, JSON.stringify(list.slice(0, 30)));
+}
 
 class Cancelled extends Error {}
 
@@ -23,10 +48,16 @@ export function useChat(client: ChatClient) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [pending, setPending] = useState(false);
   const [booting, setBooting] = useState(true);
+  const [generation, setGeneration] = useState(0);
+  const [stored, setStored] = useState<SessionEntry[]>(() => readSessions());
+  /** Что открыть при следующей загрузке: конкретную сессию и/или первое сообщение. */
+  const target = useRef<{ sessionId?: string; firstText?: string } | null>(null);
   const roleRef = useRef(role);
   const sessionRef = useRef(sessionId);
   const request = useRef(0);
   const sending = useRef(false);
+  /** Ссылка на send для отложенной отправки первого сообщения после открытия сессии. */
+  const sendRef = useRef<(text: string) => boolean>(() => false);
 
   const context = useCallback(() => ({ user: USER_LOGIN, role: roleRef.current }), []);
 
@@ -39,12 +70,47 @@ export function useChat(client: ChatClient) {
     let cancelled = false;
     void (async () => {
       try {
-        const created = await client.createSession(context());
+        // Сессия переживает обновление страницы: id лежит в localStorage.
+        const wanted = target.current;
+        target.current = null;
+        const saved =
+          wanted?.sessionId ?? (wanted ? null : window.localStorage.getItem(SESSION_KEY));
+        if (saved) {
+          try {
+            const history = await client.getMessages(context(), saved);
+            if (cancelled) return;
+            setSessionId(saved);
+            window.localStorage.setItem(SESSION_KEY, saved);
+            setMessages(history);
+            return;
+          } catch {
+            window.localStorage.removeItem(SESSION_KEY);
+          }
+        }
+        // Сервер может ещё стартовать (первая сборка Gradle идёт минуты): пробуем несколько раз.
+        let created: { sessionId: string } | null = null;
+        for (let attempt = 0; ; attempt += 1) {
+          try {
+            created = await client.createSession(context());
+            break;
+          } catch (error) {
+            if (cancelled || attempt >= BOOT_RETRIES) throw error;
+            setMessages([{ role: "assistant", text: "Жду, пока запустится сервер…" }]);
+            await delay(BOOT_RETRY_MS);
+          }
+        }
+        if (!created) return;
         if (cancelled) return;
         setSessionId(created.sessionId);
+        window.localStorage.setItem(SESSION_KEY, created.sessionId);
         const history = await client.getMessages(context(), created.sessionId);
         if (cancelled) return;
         setMessages(history);
+        if (wanted?.firstText) {
+          sessionRef.current = created.sessionId;
+          const text = wanted.firstText;
+          window.setTimeout(() => sendRef.current(text), 0);
+        }
       } catch (error) {
         if (cancelled) return;
         setMessages([{ role: "assistant", text: errorText(error) }]);
@@ -56,7 +122,37 @@ export function useChat(client: ChatClient) {
       cancelled = true;
       request.current += 1;
     };
-  }, [client, context]);
+  }, [client, context, generation]);
+
+  const reboot = useCallback((next: { sessionId?: string; firstText?: string }) => {
+    setStored(readSessions());
+    target.current = next;
+    request.current += 1;
+    sending.current = false;
+    setPending(false);
+    setMessages([]);
+    setSessionId(null);
+    setBooting(true);
+    setGeneration((value) => value + 1);
+  }, []);
+
+  /** «Новая кампания»: чистый черновик в новой сессии. */
+  const newSession = useCallback(() => reboot({}), [reboot]);
+
+  /** Открыть черновик из списка. */
+  const openSession = useCallback((id: string) => reboot({ sessionId: id }), [reboot]);
+
+  /** Открыть сохранённую кампанию: новая сессия и команда «открой кампанию N». */
+  const openCampaign = useCallback(
+    (id: number) => reboot({ firstText: `открой кампанию ${id}` }),
+    [reboot],
+  );
+
+  const forgetSession = useCallback((id: string) => {
+    const next = readSessions().filter((item) => item.id !== id);
+    writeSessions(next);
+    setStored(next);
+  }, []);
 
   const pushAssistant = useCallback((text: string, blocks?: IncomingBlock[]) => {
     setMessages((prev) => [...prev, { role: "assistant", text, blocks }]);
@@ -115,7 +211,37 @@ export function useChat(client: ChatClient) {
     [client, context, pushAssistant, waitForJob],
   );
 
+  useEffect(() => {
+    sendRef.current = send;
+  }, [send]);
+
   const draftBlock = useMemo(() => latestDraftBlock(messages), [messages]);
+
+  // Список черновиков: текущая сессия сверху, название — из карточки черновика.
+  const currentEntry = useMemo<SessionEntry | null>(() => {
+    if (!sessionId || messages.length === 0) return null;
+    const title =
+      draftBlock?.draft.name?.trim() ||
+      messages.find((m) => m.role === "user")?.text.slice(0, 48) ||
+      "";
+    if (!title) return null;
+    return {
+      id: sessionId,
+      title,
+      updatedAt: messages.length,
+      campaignId: draftBlock?.draft.savedCampaignId ?? null,
+    };
+  }, [sessionId, messages, draftBlock]);
+  const sessions = useMemo(
+    () =>
+      currentEntry
+        ? [currentEntry, ...stored.filter((item) => item.id !== currentEntry.id)]
+        : stored,
+    [currentEntry, stored],
+  );
+  useEffect(() => {
+    if (currentEntry) writeSessions(sessions);
+  }, [currentEntry, sessions]);
   const quickReplies = useMemo(() => latestQuickReplies(messages), [messages]);
 
   return {
@@ -129,5 +255,10 @@ export function useChat(client: ChatClient) {
     draftBlock,
     quickReplies,
     send,
+    newSession,
+    openSession,
+    openCampaign,
+    forgetSession,
+    sessions,
   };
 }

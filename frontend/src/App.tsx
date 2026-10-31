@@ -5,6 +5,7 @@ import { useChat } from "./chat/useChat";
 import { Composer } from "./components/composer/Composer";
 import { QuickReplyBar } from "./components/composer/QuickReplyBar";
 import { DraftRail } from "./components/draft/DraftRail";
+import { Sidebar } from "./components/sidebar/Sidebar";
 import { AppShell } from "./components/layout/AppShell";
 import { HeaderBar } from "./components/layout/HeaderBar";
 import { MessageList } from "./components/thread/MessageList";
@@ -35,16 +36,36 @@ export function App() {
           onRoleChange={chat.setRole}
         />
       }
+      sidebar={
+        <Sidebar
+          user={chat.user}
+          role={chat.role}
+          currentSession={chat.sessionId}
+          sessions={chat.sessions}
+          refreshKey={chat.messages.length}
+          disabled={chat.pending}
+          onNew={chat.newSession}
+          onOpenSession={chat.openSession}
+          onOpenCampaign={chat.openCampaign}
+          onForget={chat.forgetSession}
+        />
+      }
       thread={
         <>
           <MessageList
             messages={chat.messages}
             booting={chat.booting}
+            pending={chat.pending}
             disabled={inputLocked}
             onSend={chat.send}
             onSave={() => chat.send(CONFIRM_TEXT)}
           />
-          <QuickReplyBar options={chat.quickReplies} disabled={inputLocked} onSend={chat.send} />
+          <QuickReplyBar
+            key={chat.messages.length}
+            block={chat.quickReplies}
+            disabled={inputLocked}
+            onSend={chat.send}
+          />
           <Composer pending={chat.pending} disabled={inputLocked} onSend={chat.send} />
         </>
       }

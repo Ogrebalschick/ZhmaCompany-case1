@@ -6,7 +6,8 @@
   min-height: 148px;
   padding: 20px 22px;
   border-radius: 18px;
-  background: linear-gradient(100deg, #16324f 0%, #1f6f8b 100%);
+  background: var(--sber-gradient);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
   color: #fff;
 }
 

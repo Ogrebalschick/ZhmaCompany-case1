@@ -13,7 +13,7 @@
   flex-direction: column;
   padding: 28px 16px 16px;
   border-radius: 22px;
-  background: linear-gradient(180deg, #0e6b57 0%, #14956f 58%, #0b3d4a 100%);
+  background: var(--sber-gradient);
   color: #fff;
 }
 
@@ -38,8 +38,14 @@
   align-self: flex-start;
   border-radius: 999px;
   background: #fff;
-  color: #0e6b57;
+  color: var(--accent-dark);
   padding: 8px 12px;
   font-size: 14px;
   font-weight: 700;
+}
+
+.withImage {
+  background-size: cover;
+  background-position: center;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
 }

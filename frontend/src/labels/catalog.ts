@@ -73,7 +73,7 @@ const PLACES: Record<number, { code: string; description: string; inactive: bool
 
 export function topicLabel(code: string): string {
   const name = TOPICS[code];
-  return name ? `${name} (${code})` : code;
+  return name ?? code;
 }
 
 export function replyLabel(option: string): string {
@@ -88,18 +88,18 @@ export function replyLabel(option: string): string {
 
 export function segmentLabel(code: string): string {
   const name = SEGMENTS[code];
-  return name ? `${name} (${code})` : code;
+  return name ?? code;
 }
 
 export function placeLabel(id: number): string {
   const place = PLACES[id];
   if (!place) return String(id);
   const state = place.inactive ? ", выключено" : "";
-  return `${place.description} (${place.code}${state})`;
+  return `${place.description}${state}`;
 }
 
 export function tagLabel(id: number): string {
-  return TAGS[id] ? `${TAGS[id]} (${id})` : String(id);
+  return TAGS[id] ?? `тег ${id}`;
 }
 
 export function formatSegments(codes: string[] | undefined): string {
