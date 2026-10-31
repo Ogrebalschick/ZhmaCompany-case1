@@ -1,2 +1,51 @@
+# .verify/ — local build tooling (JDK, kotlinc, downloaded jars, output)
+.verify/
+
+# Kotlin / Java
+*.class
+*.jar
+*.war
+*.ear
+!gradle/wrapper/gradle-wrapper.jar
+
+# Build output
+build/
+out/
+bin/
+target/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Gradle
+.gradle/
+
+# Logs
+*.log
+logs/
+
+# OS
+Thumbs.db
+desktop.ini
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# Env / secrets
+.env
+*.env.local
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Brief and prompts stay on disk, not in git
 /prompt-*.md
 /case-readonly/

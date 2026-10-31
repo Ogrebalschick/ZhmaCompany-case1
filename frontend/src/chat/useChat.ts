@@ -7,7 +7,7 @@ import { USER_LOGIN } from "./phrases";
 import { latestDraftBlock, latestQuickReplies } from "./selectors";
 
 const POLL_MS = 1000;
-const POLL_LIMIT = 45;
+const POLL_LIMIT = 110;
 
 class Cancelled extends Error {}
 
