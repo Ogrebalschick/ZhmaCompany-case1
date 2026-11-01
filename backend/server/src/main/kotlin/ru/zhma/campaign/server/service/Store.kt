@@ -484,7 +484,7 @@ fun auditText(id: Long): String {
                 }
             "• ${e.at.replace('T', ' ').take(16)} · ${e.actor} — $what" + (e.comment?.let { ": «$it»" } ?: "")
         }
-    return "Журнал кампании «${row[CampaignsTable.name]}» (№$id):\n$lines"
+    return "Журнал кампании «${row[CampaignsTable.name]}» (№ $id):\n$lines"
 }
 
 private fun entityLabel(entity: String): String =

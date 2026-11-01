@@ -722,7 +722,7 @@ class AgentTurn(
         val campaign =
             input.campaigns.find { it.id == id }
                 ?: return TurnResult(
-                    AssistantReply("Кампании №$id нет. Напишите «покажи кампании», чтобы увидеть список.", emptyList()),
+                    AssistantReply("Кампании № $id нет. Напишите «покажи кампании», чтобы увидеть список.", emptyList()),
                     input.draft,
                 )
         return TurnResult(

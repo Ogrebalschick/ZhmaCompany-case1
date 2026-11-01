@@ -36,7 +36,7 @@ object ModeratorTurn {
                     listReply(
                         input,
                         waiting,
-                        "Кампания №${campaign.id} сейчас не на модерации (${stateLabel(campaign.state)}).",
+                        "Кампания № ${campaign.id} сейчас не на модерации (${stateLabel(campaign.state)}).",
                     )
                 comment.length < 3 ->
                     reply(
@@ -60,7 +60,7 @@ object ModeratorTurn {
                     listReply(
                         input,
                         waiting,
-                        "Кампания №${campaign.id} сейчас не на модерации (${stateLabel(campaign.state)}).",
+                        "Кампания № ${campaign.id} сейчас не на модерации (${stateLabel(campaign.state)}).",
                     )
                 else ->
                     TurnResult(
@@ -86,7 +86,7 @@ object ModeratorTurn {
     ): TurnResult {
         val blocks = mutableListOf<UiBlock>()
         if (waiting.isNotEmpty()) blocks += UiBlock.CampaignList(waiting)
-        val items = waiting.take(6).map { ReplyOption("Одобрить №${it.id}", "одобри ${it.id}", it.name) }
+        val items = waiting.take(6).map { ReplyOption("Одобрить № ${it.id}", "одобри ${it.id}", it.name) }
         if (items.isNotEmpty()) blocks += UiBlock.QuickReplies(items.map { it.value }, field = "moderation", items = items)
         return TurnResult(AssistantReply(text, blocks), input.draft)
     }

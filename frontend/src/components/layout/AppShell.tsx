@@ -1,4 +1,5 @@
 import { useRef, type ReactNode } from "react";
+import { SIDEBAR_COLLAPSED, clampSidebarWidth } from "./sidebarWidth";
 import styles from "./AppShell.module.css";
 
 export function AppShell({
@@ -8,6 +9,9 @@ export function AppShell({
   rail,
   railWidth,
   onRailWidth,
+  sidebarWidth,
+  sidebarCollapsed,
+  onSidebarWidth,
 }: {
   header: ReactNode;
   sidebar?: ReactNode;
@@ -15,12 +19,48 @@ export function AppShell({
   rail: ReactNode;
   railWidth: number | null;
   onRailWidth: (width: number) => void;
+  sidebarWidth: number | null;
+  sidebarCollapsed: boolean;
+  onSidebarWidth: (width: number) => void;
 }) {
   const drag = useRef<{ x: number; width: number } | null>(null);
+  const sideDrag = useRef<{ x: number; width: number } | null>(null);
+  const frameStyle =
+    sidebarWidth == null
+      ? undefined
+      : {
+          gridTemplateColumns: `${
+            sidebarCollapsed ? SIDEBAR_COLLAPSED : clampSidebarWidth(sidebarWidth)
+          }px minmax(0, 1fr)`,
+        };
 
   return (
-    <div className={styles.frame}>
-      {sidebar ? <aside className={styles.sidebar}>{sidebar}</aside> : null}
+    <div className={styles.frame} style={frameStyle}>
+      {sidebar ? (
+        <aside className={styles.sidebar}>
+          {sidebar}
+          {sidebarWidth != null && !sidebarCollapsed ? (
+            <button
+              type="button"
+              className={styles.sideHandle}
+              aria-label="Ширина списка кампаний"
+              data-testid="sidebar-resize"
+              onPointerDown={(event) => {
+                sideDrag.current = { x: event.clientX, width: clampSidebarWidth(sidebarWidth) };
+                event.currentTarget.setPointerCapture(event.pointerId);
+              }}
+              onPointerMove={(event) => {
+                if (!sideDrag.current) return;
+                const next = sideDrag.current.width + (event.clientX - sideDrag.current.x);
+                onSidebarWidth(clampSidebarWidth(next));
+              }}
+              onPointerUp={() => {
+                sideDrag.current = null;
+              }}
+            />
+          ) : null}
+        </aside>
+      ) : null}
       <div className={styles.shell}>
         {header}
         <div
