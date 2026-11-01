@@ -1,10 +1,37 @@
 .side {
+  min-width: 0;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 18px;
   padding: 18px 14px;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  scrollbar-width: thin;
+}
+
+.side::-webkit-scrollbar {
+  width: 8px;
+  height: 0;
+}
+
+.side::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.sideCollapsed {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 8px;
   background: var(--surface);
   border-right: 1px solid var(--line);
 }
@@ -13,7 +40,36 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
   padding: 0 6px;
+}
+
+.brandText {
+  min-width: 0;
+}
+
+.collapse,
+.expand {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.collapse {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.collapse:hover,
+.expand:hover {
+  background: var(--bg);
+  color: var(--ink);
 }
 
 .brand strong {
@@ -57,33 +113,67 @@
   line-height: 1;
 }
 
+.group {
+  min-width: 0;
+}
+
 .group h4 {
   margin: 0 6px 6px;
+  min-width: 0;
+  overflow: hidden;
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .groupHead {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 12px;
 }
 
-.toggle {
+.groupHead h4 {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.scope {
   display: inline-flex;
-  gap: 4px;
-  align-items: center;
-  margin-right: 6px;
+  flex-shrink: 0;
+  margin-right: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg);
+}
+
+.scope button {
+  border: 0;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: transparent;
   color: var(--muted);
   font-size: 12px;
+  font-weight: 700;
+}
+
+.scopeOn {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  box-shadow: 0 0 0 1px var(--line);
 }
 
 .group ul {
   margin: 0;
   padding: 0;
+  min-width: 0;
   list-style: none;
   display: grid;
   gap: 2px;
@@ -92,6 +182,8 @@
 .group li {
   position: relative;
   display: flex;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .group li > button:first-child {
@@ -117,13 +209,26 @@
   background: var(--accent-soft) !important;
 }
 
-.title {
+.title,
+.author {
+  display: block;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.title {
   font-size: 14px;
   font-weight: 600;
+}
+
+.author {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .title em {
@@ -159,6 +264,10 @@
   color: var(--accent-dark);
 }
 
+.group li:has(.forget) > button:first-child {
+  padding-right: 28px;
+}
+
 .forget {
   position: absolute;
   right: 4px;
@@ -167,15 +276,18 @@
   background: transparent;
   color: var(--muted);
   font-size: 16px;
-  opacity: 0;
+  line-height: 1;
+  opacity: 0.55;
 }
 
-.group li:hover .forget {
+.group li:hover .forget,
+.forget:focus-visible {
   opacity: 1;
 }
 
-.empty {
-  margin: 0 6px;
+.empty,
+.hint {
+  margin: 0 6px 8px;
   color: var(--muted);
   font-size: 13px;
 }

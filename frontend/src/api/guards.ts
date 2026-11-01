@@ -95,6 +95,7 @@ function asDraft(raw: Record<string, unknown>): DraftCampaign {
     initialCtr: asNumber(raw.initialCtr),
     creativeBrief: asString(raw.creativeBrief),
     savedCampaignId: asNumber(raw.savedCampaignId),
+    dirty: raw.dirty === true,
     knownState: asString(raw.knownState),
   };
 }

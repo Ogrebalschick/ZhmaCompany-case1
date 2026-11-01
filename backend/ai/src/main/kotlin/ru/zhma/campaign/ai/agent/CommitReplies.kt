@@ -33,7 +33,7 @@ object CommitReplies {
                 val items = mutableListOf(ReplyOption("На модерацию", "Отправь на модерацию", recommended = true))
                 if (draft.banner == null) items += ReplyOption("Сделать баннер", "Сделай баннер")
                 AssistantReply(
-                    "Кампания «${draft.name}» сохранена (№${draft.savedCampaignId}), статус — ${campaign?.state?.let {
+                    "Кампания «${draft.name}» сохранена (№ ${draft.savedCampaignId}), статус — ${campaign?.state?.let {
                         ModeratorTurn
                             .stateLabel(
                                 it,
@@ -65,7 +65,7 @@ object CommitReplies {
                 if (campaign?.state in setOf("DRAFT", "NEEDS_WORK")) items += ReplyOption("На модерацию", "Отправь на модерацию")
                 val text =
                     buildString {
-                        append("Открыл кампанию «${draft.name}» (№${draft.savedCampaignId}), статус — $state.")
+                        append("Открыл кампанию «${draft.name}» (№ ${draft.savedCampaignId}), статус — $state.")
                         if (comment != null) append(" Комментарий модератора: «$comment».")
                         append(" Напишите, что поправить: правки попадут в базу после «Сохранить».")
                     }

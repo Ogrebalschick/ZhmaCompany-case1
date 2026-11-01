@@ -31,6 +31,8 @@ export function CampaignDraftCard({
 }) {
   const draft = block.draft;
   const tags = draft.tagIds ?? [];
+  const alreadySaved = draft.savedCampaignId != null && draft.dirty !== true;
+  const canSave = block.readyToSave && !alreadySaved;
   const segments = block.choices?.segments;
   const places = block.choices?.places;
   return (
@@ -117,12 +119,13 @@ export function CampaignDraftCard({
           />
         ) : null}
       </dl>
-      {block.readyToSave ? (
+      {block.readyToSave || alreadySaved ? (
         <button
           type="button"
           className={controls.primary}
           data-testid={variant === "rail" ? "rail-save" : "save-campaign"}
-          disabled={disabled}
+          disabled={disabled || !canSave}
+          title={alreadySaved ? "Изменений нет — сохранять нечего" : undefined}
           onClick={onSave}
         >
           Сохранить

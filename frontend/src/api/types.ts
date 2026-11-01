@@ -45,6 +45,8 @@ export interface DraftCampaign {
   banner?: BannerDraft | null;
   pendingProposal?: EntityProposal | null;
   savedCampaignId?: number | null;
+  /** Есть правки после последнего сохранения. */
+  dirty?: boolean;
   /** Состояние сохранённой кампании: DRAFT, ON_MODERATION, NEEDS_WORK, APPROVED, ACTIVE… */
   knownState?: string | null;
 }

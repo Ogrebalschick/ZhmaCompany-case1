@@ -71,14 +71,32 @@
 }
 
 .sidebar {
+  position: relative;
+  min-width: 0;
   min-height: 0;
   display: grid;
+  overflow: hidden;
 }
 
-@media (max-width: 1100px) {
-  .frame {
-    grid-template-columns: 220px minmax(0, 1fr);
-  }
+.sideHandle {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 8px;
+  margin: 0;
+  padding: 0;
+  transform: translateX(4px);
+  border: 0;
+  background: transparent;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.sideHandle:hover,
+.sideHandle:focus-visible {
+  background: var(--accent);
 }
 
 @media (max-width: 760px) {

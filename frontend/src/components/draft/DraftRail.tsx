@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import type { CampaignDraftBlock } from "../../api/types";
 import { changedFieldKeys } from "../../labels/draftRows";
+import { campaignNumber } from "../../labels/fields";
 import { CampaignDraftCard } from "../blocks/CampaignDraftCard";
 import styles from "./DraftRail.module.css";
 
@@ -28,32 +29,40 @@ function railStatus(block: CampaignDraftBlock): { state: string; shown: string |
   const state = STATES[draft.knownState ?? "DRAFT"] ?? draft.knownState ?? "Сохранена";
   const live = draft.knownState === "ACTIVE" || draft.knownState === "ACTIVE_EDITING";
   return {
-    state: `№${draft.savedCampaignId} · ${state}`,
+    state: `${campaignNumber(draft.savedCampaignId)} · ${state}`,
     shown: live ? "в показе" : "не в показе",
   };
 }
 
 export function DraftRail({
   block,
+  sessionId,
   disabled,
   onSave,
 }: {
   block: CampaignDraftBlock | null;
+  sessionId: string | null;
   disabled: boolean;
   onSave: () => void;
 }) {
-  const previous = useRef<CampaignDraftBlock | null>(null);
-  const [flashKeys, setFlashKeys] = useState<string[]>([]);
-  const [flashToken, setFlashToken] = useState(0);
-
-  useEffect(() => {
-    if (!block) return;
-    const keys = changedFieldKeys(block, previous.current);
-    previous.current = block;
-    if (keys.length === 0) return;
-    setFlashKeys(keys);
-    setFlashToken((value) => value + 1);
-  }, [block]);
+  const [flash, setFlash] = useState<{
+    sessionId: string | null;
+    block: CampaignDraftBlock | null;
+    keys: string[];
+    token: number;
+  }>({ sessionId: null, block: null, keys: [], token: 0 });
+  if (flash.sessionId !== sessionId || flash.block !== block) {
+    const sameChat = flash.sessionId === sessionId && flash.block != null && block != null;
+    const keys = sameChat ? changedFieldKeys(block, flash.block) : [];
+    setFlash({
+      sessionId,
+      block,
+      keys,
+      token: keys.length > 0 ? flash.token + 1 : flash.token,
+    });
+  }
+  const flashKeys = flash.keys;
+  const flashToken = flash.token;
 
   return (
     <aside className={styles.rail} data-testid="draft-rail">

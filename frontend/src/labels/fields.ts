@@ -98,6 +98,11 @@ export function formatCampaignId(id: number | null | undefined): string {
   return String(id);
 }
 
+/** «№ 2», с пробелом после знака номера. */
+export function campaignNumber(id: number): string {
+  return `№ ${id}`;
+}
+
 const MISSING_LABELS: Record<string, string> = {
   name: "название",
   startDate: "дата начала",

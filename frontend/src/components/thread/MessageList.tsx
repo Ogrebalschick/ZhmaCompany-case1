@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { asCampaignDraft } from "../../api/guards";
 import type { CampaignDraftBlock, ChatMessage } from "../../api/types";
+import { ProgressIndicator } from "../ui/ProgressIndicator";
 import { AssistantMessage } from "./AssistantMessage";
 import { EmptyThread } from "./EmptyThread";
 import { UserMessage } from "./UserMessage";
@@ -30,7 +31,11 @@ export function MessageList({
   return (
     <div className={styles.list} data-testid="message-list">
       <div className={styles.stream}>
-        {booting ? <p className={styles.boot}>Открываю сессию</p> : null}
+        {booting ? (
+          <div className={styles.boot}>
+            <ProgressIndicator label="Открываю диалог" />
+          </div>
+        ) : null}
         {!booting && messages.length === 0 ? (
           <EmptyThread disabled={disabled} onSend={onSend} />
         ) : null}
