@@ -47,9 +47,19 @@
   margin-top: auto;
   align-self: flex-start;
   padding: 8px 14px;
+  border: 0;
   border-radius: 999px;
   background: var(--sber-gradient, #21a038);
   color: #fff;
+  font: inherit;
   font-size: 13px;
   font-weight: 700;
+  cursor: pointer;
+}
+
+.note {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent, #21a038);
 }
