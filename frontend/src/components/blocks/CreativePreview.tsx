@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { BannerDraft } from "../../api/types";
 import { bannerTypeLabel, orDash } from "../../labels/fields";
+import { PromoScreen } from "./PromoScreen";
 import { SmartBannerFrame } from "./SmartBannerFrame";
 import { StoryFrame } from "./StoryFrame";
 import { useBannerImage } from "./useBannerImage";
@@ -32,15 +33,18 @@ export function CreativePreview({ banner }: { banner: BannerDraft }) {
       <p className={styles.meta}>
         {bannerTypeLabel(banner.bannerType)} · {banner.channel}
       </p>
-      <button
-        type="button"
-        className={styles.zoomable}
-        onClick={() => setZoom(true)}
-        title="Открыть крупно"
-      >
-        {frame}
-        <span className={styles.zoomHint}>⤢ Крупно</span>
-      </button>
+      <div className={styles.pair}>
+        <button
+          type="button"
+          className={styles.zoomable}
+          onClick={() => setZoom(true)}
+          title="Открыть крупно"
+        >
+          {frame}
+          <span className={styles.zoomHint}>⤢ Крупно</span>
+        </button>
+        <PromoScreen banner={banner} image={image.src} />
+      </div>
       {zoom ? (
         <ZoomModal onClose={() => setZoom(false)}>
           <div className={story ? styles.zoomStory : styles.zoomBanner}>{frame}</div>

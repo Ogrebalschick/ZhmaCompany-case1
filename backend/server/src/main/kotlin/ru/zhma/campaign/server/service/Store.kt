@@ -4,6 +4,7 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -25,6 +26,7 @@ import ru.zhma.campaign.ai.model.ChannelRef
 import ru.zhma.campaign.ai.model.DraftCampaign
 import ru.zhma.campaign.ai.model.HistoryItem
 import ru.zhma.campaign.ai.model.PlaceRef
+import ru.zhma.campaign.ai.model.PromoContent
 import ru.zhma.campaign.ai.model.SegmentRef
 import ru.zhma.campaign.ai.model.TagRef
 import ru.zhma.campaign.ai.model.TopicRef
@@ -861,6 +863,7 @@ private fun replaceBanner(
     val had = BannersTable.selectAll().where { BannersTable.campaignId eq campaignId }.any()
     CreativesTable.deleteWhere { CreativesTable.campaignId eq campaignId }
     BannersTable.deleteWhere { BannersTable.campaignId eq campaignId }
+    ContentsTable.deleteWhere { ContentsTable.campaignId eq campaignId }
     val typeId = catalog.bannerTypes.getValue(banner.bannerType).id
     val content =
         BannerContentJson(
@@ -882,15 +885,24 @@ private fun replaceBanner(
             it[bannerTypeId] = typeId
             it[contentJson] = AppJson.encodeToString(BannerContentJson.serializer(), content)
         } get BannersTable.id
+    val promoName = banner.title?.trim()?.takeIf { it.isNotEmpty() } ?: "Промо-экран"
+    val contentId =
+        ContentsTable.insert {
+            it[ContentsTable.campaignId] = campaignId
+            it[name] = promoName
+            it[contentType] = PromoContent.TYPE
+            it[contentJson] = AppJson.encodeToString(JsonObject.serializer(), PromoContent.tree(banner))
+        } get ContentsTable.id
     CreativesTable.insert {
         it[CreativesTable.campaignId] = campaignId
         it[name] = "Креатив ${banner.channel}"
         it[CreativesTable.bannerId] = bannerId
-        it[contentId] = null
+        it[CreativesTable.contentId] = contentId
         it[channelCode] = banner.channel
     }
     val action = if (replacing && had) "UPDATE" else "CREATE"
     writeAudit(campaignId, "BANNER", bannerId, action, null, actor, null)
+    writeAudit(campaignId, "CONTENT", contentId, action, null, actor, null)
     writeAudit(campaignId, "CREATIVE", bannerId, action, null, actor, null)
 }
 

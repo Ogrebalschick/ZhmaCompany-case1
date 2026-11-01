@@ -48,7 +48,7 @@ Chat API:
 
 Campaign and dictionary routes follow `task.md` §3 in MVP scope. `POST /api/campaigns/{id}/confirm` and a chat `SAVE_CAMPAIGN` share one save path. Every request carries `X-User` and `X-Role`.
 
-First slice stores dictionaries from `mock-data.md` §1 and banners mapped from `BannerDraft`. Historical campaigns 101–115 are a later regression load. PROMO content trees and live image generation stay behind the existing interfaces and are not on the first path.
+First slice stores dictionaries from `mock-data.md` §1 and banners mapped from `BannerDraft`. Historical campaigns 101–115 are a later regression load. Saving a banner also stores a PROMO content tree built by `PromoContent` and links it from the creative. Live image generation stays behind the existing interfaces.
 
 File ownership for parallel agents:
 
