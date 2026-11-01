@@ -97,14 +97,21 @@ class CampaignSaveServerTest : ServerTestBase() {
                     .jsonObject["content"]!!
                     .jsonObject
             assertEquals("default", content["actionType"]!!.jsonPrimitive.content)
-            assertEquals(
-                "iOS",
+            val creative =
                 body["creatives"]!!
                     .jsonArray
                     .first()
-                    .jsonObject["channelCode"]!!
-                    .jsonPrimitive.content,
-            )
+                    .jsonObject
+            assertEquals("iOS", creative["channelCode"]!!.jsonPrimitive.content)
+            val promo = body["contents"]!!.jsonArray.single().jsonObject
+            assertEquals("PROMO", promo["contentType"]!!.jsonPrimitive.content)
+            assertEquals(promo["id"]!!.jsonPrimitive.content, creative["contentId"]!!.jsonPrimitive.content)
+            val column = promo["content"]!!.jsonObject["component"]!!.jsonObject
+            assertEquals("linearContainer", column["role"]!!.jsonPrimitive.content)
+            assertEquals("v", column["axis"]!!.jsonPrimitive.content)
+            val parts = column["components"]!!.jsonArray.map { it.jsonObject }
+            assertEquals(listOf("text", "text"), parts.map { it["role"]!!.jsonPrimitive.content })
+            assertEquals("Вклад", parts[0]["value"]!!.jsonPrimitive.content)
             val warnings = client.get("/api/campaigns/$id/warnings") { manager() }.json()
             val lines = warnings["warnings"]!!.jsonArray.map { it.jsonPrimitive.content }
             assertTrue(lines.none { it.contains("креатив") })
@@ -132,6 +139,22 @@ class CampaignSaveServerTest : ServerTestBase() {
                     .jsonObject["title"]!!
                     .jsonPrimitive.content
             assertEquals("Новый заголовок", title)
+            val promoParts =
+                updated
+                    .json()["contents"]!!
+                    .jsonArray
+                    .single()
+                    .jsonObject["content"]!!
+                    .jsonObject["component"]!!
+                    .jsonObject["components"]!!
+                    .jsonArray
+            assertEquals(
+                "Новый заголовок",
+                promoParts
+                    .first()
+                    .jsonObject["value"]!!
+                    .jsonPrimitive.content,
+            )
             val listed = client.get("/api/campaigns") { manager() }.jsonArray()
             assertEquals(
                 "Вклад весна 2",

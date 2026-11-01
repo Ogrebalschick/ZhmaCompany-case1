@@ -4,6 +4,13 @@
   justify-items: start;
 }
 
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+
 .caption {
   margin: 0;
   font-size: 13px;
